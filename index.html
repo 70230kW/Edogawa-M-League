@@ -172,16 +172,16 @@
         let pointHistoryChart = null;
         
         // --- Firebase Config ---
-        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
         const firebaseConfig = {
-          apiKey: "AIzaSyBwWqWxRy5JlcQwbc5KAXRvH0swd0pOzSg",
-          authDomain: "edogawa-m-league-summary.firebaseapp.com",
-          projectId: "edogawa-m-league-summary",
-          storageBucket: "edogawa-m-league-summary.firebasestorage.app",
-          messagingSenderId: "587593171009",
-          appId: "1:587593171009:web:b48dd5b809f2d2ce8886c0",
-          measurementId: "G-XMYXPG06QF"
+            apiKey: "AIzaSyBwWqWxRy5JlcQwbc5KAXRvH0swd0pOzSg",
+            authDomain: "edogawa-m-league-summary.firebaseapp.com",
+            projectId: "edogawa-m-league-summary",
+            storageBucket: "edogawa-m-league-summary.appspot.com",
+            messagingSenderId: "587593171009",
+            appId: "1:587593171009:web:b48dd5b809f2d2ce8886c0",
+            measurementId: "G-XMYXPG06QF"
         };
+        const appId = 'edogawa-m-league-summary';
 
         // --- Initialization ---
         function initializeAppAndAuth() {
@@ -196,11 +196,7 @@
                     await setupListeners();
                 } else {
                     try {
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await signInWithCustomToken(auth, __initial_auth_token);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
+                        await signInAnonymously(auth);
                     } catch (error) {
                         console.error("Authentication failed:", error);
                         document.getElementById('auth-status').textContent = 'Authentication Failure';
@@ -218,8 +214,8 @@
         async function setupListeners() {
             if (!currentUser) return;
 
-            const usersQuery = query(collection(db, `artifacts/${appId}/public/data/users`));
-            onSnapshot(usersQuery, (snapshot) => {
+            const usersCollectionRef = collection(db, `users`);
+            onSnapshot(usersCollectionRef, (snapshot) => {
                 users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 users.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
 
@@ -231,7 +227,8 @@
                 renderPersonalStatsTab();
             });
 
-            const gamesQuery = query(collection(db, `artifacts/${appId}/public/data/games`), orderBy("createdAt", "desc"));
+            const gamesCollectionRef = collection(db, `games`);
+            const gamesQuery = query(gamesCollectionRef, orderBy("createdAt", "desc"));
             onSnapshot(gamesQuery, (snapshot) => {
                 games = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 updateLeaderboard();
@@ -769,7 +766,7 @@
             if (!name) { showModalMessage("雀士名を入力してください。"); return; }
             if (users.some(u => u.name === name)) { showModalMessage("同じ名前の雀士が既に存在します。"); return; }
             try {
-                const usersCollectionRef = collection(db, `artifacts/${appId}/public/data/users`);
+                const usersCollectionRef = collection(db, `users`);
                 await addDoc(usersCollectionRef, { name: name, createdAt: new Date() });
                 nameInput.value = '';
                 showModalMessage(`「${name}」さんを登録しました。`);
@@ -791,10 +788,10 @@
             closeModal();
             try {
                 const batch = writeBatch(db);
-                const gamesQuery = query(collection(db, `artifacts/${appId}/public/data/games`), where('playerIds', 'array-contains', id));
+                const gamesQuery = query(collection(db, `games`), where('playerIds', 'array-contains', id));
                 const gamesSnapshot = await getDocs(gamesQuery);
                 gamesSnapshot.forEach(doc => batch.delete(doc.ref));
-                const userDocRef = doc(db, `artifacts/${appId}/public/data/users`, id);
+                const userDocRef = doc(db, `users`, id);
                 batch.delete(userDocRef);
                 await batch.commit();
                 showModalMessage(`ユーザーと関連データを削除しました。`);
@@ -829,7 +826,7 @@
                 });
 
                 if (!isComplete) {
-                    if (onlyCompleted) continue; // Skip incomplete rounds for status check
+                    if (onlyCompleted) continue;
                     return { error: `半荘 #${i+1} の全ての素点を入力してください。` };
                 }
 
@@ -922,7 +919,7 @@
             }
             
             try {
-                await addDoc(collection(db, `artifacts/${appId}/public/data/games`), {
+                await addDoc(collection(db, `games`), {
                     createdAt: new Date(), 
                     playerIds: selectedPlayers.map(p => p.id), 
                     playerNames: selectedPlayers.map(p => p.name),
