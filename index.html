@@ -210,9 +210,11 @@
         async function setupListeners() {
             if (!currentUser) return;
 
-            const usersQuery = query(collection(db, `artifacts/${appId}/public/data/users`), orderBy("createdAt", "desc"));
+            const usersQuery = query(collection(db, `artifacts/${appId}/public/data/users`));
             onSnapshot(usersQuery, (snapshot) => {
                 users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                users.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+
                 if (document.getElementById('step2-rule-settings')?.classList.contains('hidden')) {
                     renderPlayerSelection();
                 }
@@ -286,10 +288,11 @@
                 <div id="step3-score-input" class="cyber-card p-6 hidden">
                      <h2 class="cyber-header text-xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">STEP 3: 素点入力</h2>
                      <div class="overflow-x-auto"><table class="min-w-full"><thead id="score-table-head"></thead><tbody id="score-table-body"></tbody></table></div>
-                     <div class="flex justify-between items-center mt-4">
+                     <div class="flex justify-between items-center mt-4 flex-wrap gap-2">
                         <button onclick="addHanchan()" class="cyber-btn px-4 py-2 rounded-lg"><i class="fas fa-plus mr-2"></i>半荘追加</button>
-                        <div>
-                            <button onclick="backToStep2()" class="cyber-btn px-6 py-2 rounded-lg mr-2"><i class="fas fa-arrow-left mr-2"></i>戻る</button>
+                        <button onclick="showCurrentPtStatus()" class="cyber-btn px-4 py-2 rounded-lg"><i class="fas fa-calculator mr-2"></i>現在のPT状況</button>
+                        <div class="flex gap-2">
+                            <button onclick="backToStep2()" class="cyber-btn px-6 py-2 rounded-lg"><i class="fas fa-arrow-left mr-2"></i>戻る</button>
                             <button onclick="calculateAndSave()" class="cyber-btn cyber-btn-yellow px-6 py-2 rounded-lg"><i class="fas fa-save mr-2"></i>Pt変換して保存</button>
                         </div>
                     </div>
@@ -641,7 +644,7 @@
 
         function renderStatsCharts(mainPlayerId, comparisonIds) {
             const allStats = calculateAllPlayerStats();
-            const colors = ['#58a6ff', '#3fb950', '#f5655f', '#f2cc8f', '#e0aaff', '#9bf6ff'];
+            const colors = ['#58a6ff', '#52c569', '#f5655f', '#f2cc8f', '#e0aaff', '#9bf6ff'];
             
             const pointHistoryDatasets = [];
             const mainPlayerData = getPlayerPointHistory(mainPlayerId);
@@ -649,7 +652,7 @@
                 label: allStats[mainPlayerId].name,
                 data: mainPlayerData.map(d => d.cumulativePoints),
                 borderColor: colors[0],
-                backgroundColor: colors[0] + '33', // Add alpha
+                backgroundColor: colors[0] + '33',
                 fill: true, tension: 0.1
             });
             comparisonIds.forEach((id, index) => {
@@ -791,7 +794,7 @@
             } catch (error) { console.error("Error deleting user:", error); showModalMessage("削除に失敗しました。"); }
         };
         
-        window.calculateAndSave = async () => {
+        function getGameDataFromForm(onlyCompleted) {
             const basePoint = Number(document.getElementById('base-point').value);
             const returnPoint = Number(document.getElementById('return-point').value);
             const uma = [
@@ -807,29 +810,30 @@
                 const inputs = row.querySelectorAll('.score-input');
                 const scores = {};
                 let total = 0;
-                let hasEmpty = false;
+                let isComplete = true;
                 inputs.forEach(input => {
                     if (input.value.trim() === '' || input.value.trim() === '-') {
-                        hasEmpty = true;
+                        isComplete = false;
                     }
-                    const score = Number(input.value);
+                    const score = Number(input.value) || 0;
                     scores[input.dataset.playerId] = score;
                     total += score;
                 });
 
-                if(hasEmpty){
-                    showModalMessage(`半荘 #${i+1} の全ての素点を入力してください。`);
-                    return;
+                if (!isComplete) {
+                    if (onlyCompleted) continue; // Skip incomplete rounds for status check
+                    return { error: `半荘 #${i+1} の全ての素点を入力してください。` };
                 }
 
                 if (Math.round(total) !== basePoint * 4) {
-                    showModalMessage(`半荘 #${i+1} の合計点が ${basePoint*4} になっていません。(現在: ${total})`);
-                    return;
+                    return { error: `半荘 #${i+1} の合計点が ${basePoint*4} になっていません。(現在: ${total})` };
                 }
                 hanchanData.push({ rawScores: scores });
             }
 
-            if (hanchanData.length !== roundRows.length) return; 
+            if (hanchanData.length === 0 && onlyCompleted) {
+                return { error: "ポイント計算できる完成した半荘がありません。" };
+            }
 
             const totalPoints = {};
             selectedPlayers.forEach(p => totalPoints[p.id] = 0);
@@ -871,11 +875,52 @@
                     totalPoints[playerId] += points[playerId];
                 });
             });
+
+            return { hanchanData, totalPoints, settings: { basePoint, returnPoint, uma } };
+        }
+
+        window.showCurrentPtStatus = () => {
+            const gameData = getGameDataFromForm(true); // only completed
+            if (gameData.error) {
+                showModalMessage(gameData.error);
+                return;
+            }
+
+            const rankedPlayers = Object.entries(gameData.totalPoints)
+                .map(([id, points]) => ({ id, name: selectedPlayers.find(p=>p.id===id).name, points }))
+                .sort((a, b) => b.points - a.points);
+            
+            let modalHtml = `<h3 class="cyber-header text-xl font-bold text-blue-400 mb-4">現在のポイント状況</h3>
+                <table class="min-w-full text-center">
+                    <thead><tr class="border-b border-gray-700"><th class="py-2">順位</th><th class="py-2">雀士</th><th class="py-2">ポイント</th></tr></thead><tbody>`;
+            
+            rankedPlayers.forEach((player, index) => {
+                modalHtml += `<tr>
+                    <td class="py-2">${index + 1}</td>
+                    <td class="py-2">${player.name}</td>
+                    <td class="py-2 font-bold ${player.points >= 0 ? 'text-green-400' : 'text-red-400'}">${player.points.toFixed(1)}</td>
+                </tr>`;
+            });
+
+            modalHtml += `</tbody></table><div class="flex justify-end mt-6"><button onclick="closeModal()" class="cyber-btn px-4 py-2 rounded-lg">閉じる</button></div>`;
+            showModal(modalHtml);
+        };
+
+        window.calculateAndSave = async () => {
+            const gameData = getGameDataFromForm(false); // all must be completed
+            if (gameData.error) {
+                showModalMessage(gameData.error);
+                return;
+            }
             
             try {
                 await addDoc(collection(db, `artifacts/${appId}/public/data/games`), {
-                    createdAt: new Date(), playerIds: selectedPlayers.map(p => p.id), playerNames: selectedPlayers.map(p => p.name),
-                    settings: { basePoint, returnPoint, uma }, scores: hanchanData, totalPoints: totalPoints
+                    createdAt: new Date(), 
+                    playerIds: selectedPlayers.map(p => p.id), 
+                    playerNames: selectedPlayers.map(p => p.name),
+                    settings: gameData.settings, 
+                    scores: gameData.hanchanData, 
+                    totalPoints: gameData.totalPoints
                 });
                 showModalMessage("対局結果を保存しました！");
                 resetGame();
@@ -1017,7 +1062,7 @@
         };
 
         const setupScoreTable = () => {
-            document.getElementById('score-table-head').innerHTML = `<tr class="bg-gray-900"><th class="p-2 text-left">#</th>${selectedPlayers.map(p => `<th class="p-2 text-left">${p.name}</th>`).join('')}<th class="p-2 text-left">Σ</th></tr>`;
+            document.getElementById('score-table-head').innerHTML = `<tr class="bg-gray-900"><th class="p-2 text-left">#</th>${selectedPlayers.map(p => `<th class="p-2 text-left">${p.name}</th>`).join('')}<th class="p-2 text-left">Σ</th><th></th></tr>`;
             document.getElementById('score-table-body').innerHTML = '';
             addHanchan();
         };
@@ -1027,10 +1072,29 @@
             const tr = document.createElement('tr');
             tr.id = `round-${roundNum}`;
             tr.className = 'border-b border-gray-700';
-            tr.innerHTML = `<td class="p-2 font-semibold">#${roundNum}</td>${selectedPlayers.map(p => `<td class="p-2"><input type="text" inputmode="numeric" class="score-input w-full rounded-md sm:text-sm" data-player-id="${p.id}" oninput="this.value = this.value.replace(/[^\\d-]/g, '')" onchange="updateRoundTotal(${roundNum})"></td>`).join('')}<td class="p-2 font-semibold" id="total-${roundNum}">0</td>`;
+            tr.innerHTML = `<td class="p-2 font-semibold">#${roundNum}</td>${selectedPlayers.map(p => `<td class="p-2"><input type="text" inputmode="numeric" class="score-input w-full rounded-md sm:text-sm" data-player-id="${p.id}" oninput="this.value = this.value.replace(/[^\\d-]/g, '')" onchange="updateRoundTotal(${roundNum})"></td>`).join('')}<td class="p-2 font-semibold" id="total-${roundNum}">0</td><td class="p-2 text-center"><button onclick="deleteHanchan('round-${roundNum}')" class="text-red-400 hover:text-red-600"><i class="fas fa-times-circle"></i></button></td>`;
             body.appendChild(tr);
             tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
         };
+        
+        window.deleteHanchan = (rowId) => {
+            document.getElementById(rowId)?.remove();
+            renumberHanchans();
+        };
+
+        function renumberHanchans() {
+            const rows = document.getElementById('score-table-body').children;
+            Array.from(rows).forEach((row, index) => {
+                const roundNum = index + 1;
+                row.id = `round-${roundNum}`;
+                row.querySelector('td:first-child').textContent = `#${roundNum}`;
+                row.querySelector('button').setAttribute('onclick', `deleteHanchan('round-${roundNum}')`);
+                row.querySelectorAll('input').forEach(input => {
+                    input.setAttribute('onchange', `updateRoundTotal(${roundNum})`);
+                });
+            });
+        }
+
         window.updateRoundTotal = (roundNum) => {
             const roundRow = document.getElementById(`round-${roundNum}`);
             const inputs = Array.from(roundRow.querySelectorAll('.score-input'));
