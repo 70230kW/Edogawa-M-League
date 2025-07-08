@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edogawa M League - Cyber Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #0d1117;
+            --primary: #161b22;
+            --secondary: #010409;
+            --border-color: #30363d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-green: #52c569; /* Softer Green */
+            --accent-red: #f5655f;   /* Softer Red */
+            --accent-yellow: #E2FF08;
+            --accent-glow: rgba(88, 166, 255, 0.5);
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+        body {
+            font-family: '"MS PGothic", "ＭＳ Ｐゴシック", sans-serif';
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .cyber-card {
+            background-color: var(--primary);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 0 15px rgba(0,0,0,0.2), 0 0 5px var(--accent-glow);
+            transition: all 0.3s ease;
+        }
+        .cyber-btn {
+            background-color: transparent;
+            border: 1px solid var(--accent-blue);
+            color: var(--accent-blue);
+            text-shadow: 0 0 5px var(--accent-glow);
+            transition: all 0.3s ease;
+        }
+        .cyber-btn:hover, .cyber-btn.active {
+            background-color: var(--accent-blue);
+            color: var(--primary);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+        .cyber-btn-yellow {
+            border-color: var(--accent-yellow);
+            color: var(--accent-yellow);
+            text-shadow: 0 0 5px var(--accent-yellow);
+        }
+        .cyber-btn-yellow:hover {
+            background-color: var(--accent-yellow);
+            color: var(--primary);
+            box-shadow: 0 0 10px var(--accent-yellow);
+        }
+        .cyber-btn-green {
+            border-color: var(--accent-green);
+            color: var(--accent-green);
+        }
+        .cyber-btn-green:hover {
+            background-color: var(--accent-green);
+            color: var(--primary);
+            box-shadow: 0 0 10px rgba(82, 197, 105, 0.5);
+        }
+        .tab-btn.active {
+            color: var(--accent-blue);
+            border-bottom-color: var(--accent-blue);
+            text-shadow: 0 0 5px var(--accent-glow);
+        }
+        input[type="text"], input[type="number"], select {
+            background-color: var(--secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding-top: 0.6rem;
+            padding-bottom: 0.6rem;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 5px var(--accent-glow);
+        }
+        input:disabled, select:disabled {
+            background-color: #21262d;
+            cursor: not-allowed;
+        }
+        .player-checkbox:checked + label {
+            background-color: var(--accent-blue);
+            color: var(--primary);
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+        .player-checkbox:disabled + label {
+            background-color: #30363d;
+            color: #8b949e;
+            cursor: not-allowed;
+            border-color: #444;
+        }
+        .modal-backdrop { background-color: rgba(0, 0, 0, 0.8); }
+        .cyber-header { font-family: 'Orbitron', sans-serif; }
+        .glowing-text { text-shadow: 0 0 8px var(--accent-glow); }
+        .text-rank-1 { color: var(--accent-green); }
+        .text-rank-4 { color: var(--accent-red); }
+        .font-m-gothic { font-family: '"MS PGothic", "ＭＳ Ｐゴシック", sans-serif'; }
+        .sticky-col-1 { position: sticky; left: 0; z-index: 1; background-color: var(--primary); }
+        .sticky-col-2 { position: sticky; left: 60px; z-index: 1; background-color: var(--primary); }
+        .leaderboard-table th, .leaderboard-table td { background-color: var(--primary); }
+        .leaderboard-table thead th { z-index: 2; }
+    </style>
+</head>
+<body class="text-gray-200">
+
+    <div id="app" class="container mx-auto p-4 max-w-7xl">
+        <header class="cyber-card p-6 mb-6">
+            <h1 class="cyber-header text-4xl font-bold text-center glowing-text text-blue-400">
+                <i class="fas fa-dragon mr-3"></i>Edogawa M League
+            </h1>
+            <p id="auth-status" class="text-center text-xs text-gray-500 mt-2">Initializing System...</p>
+        </header>
+
+        <!-- タブナビゲーション -->
+        <div class="mb-6">
+            <div class="border-b border-gray-700">
+                <nav class="-mb-px flex flex-wrap space-x-6" aria-label="Tabs">
+                    <button onclick="changeTab('game')" class="tab-btn active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">対局</button>
+                    <button onclick="changeTab('leaderboard')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">順位表</button>
+                    <button onclick="changeTab('personal-stats')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">個人成績</button>
+                    <button onclick="changeTab('history')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">対局履歴</button>
+                    <button onclick="changeTab('history-raw')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">詳細履歴(素点)</button>
+                    <button onclick="changeTab('history-pt')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">詳細履歴(PT)</button>
+                    <button onclick="changeTab('users')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">雀士管理</button>
+                </nav>
+            </div>
+        </div>
+
+        <!-- コンテンツエリア -->
+        <main id="main-content">
+            <div id="game-tab" class="space-y-6"></div>
+            <div id="leaderboard-tab" class="hidden cyber-card p-6"></div>
+            <div id="personal-stats-tab" class="hidden cyber-card p-6"></div>
+            <div id="history-tab" class="hidden cyber-card p-6"></div>
+            <div id="history-raw-tab" class="hidden cyber-card p-6"></div>
+            <div id="history-pt-tab" class="hidden cyber-card p-6"></div>
+            <div id="users-tab" class="hidden cyber-card p-6"></div>
+        </main>
+    </div>
+
+    <!-- モーダル (汎用) -->
+    <div id="modal" class="fixed inset-0 z-50 flex items-center justify-center hidden modal-backdrop">
+        <div id="modal-content" class="cyber-card p-6 rounded-lg w-11/12 max-w-4xl max-h-[90vh] overflow-y-auto"></div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, getDocs, onSnapshot, deleteDoc, query, where, writeBatch, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- App State ---
+        let db, auth;
+        let currentUser = null;
+        let users = [];
+        let games = [];
+        let selectedPlayers = []; // {id, name}
+        let rankChart = null;
+        let pointHistoryChart = null;
+        
+        // --- Firebase Config ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "YOUR_API_KEY", authDomain: "YOUR_AUTH_DOMAIN", projectId: "YOUR_PROJECT_ID" };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // --- Initialization ---
+        function initializeAppAndAuth() {
+            const app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    currentUser = user;
+                    document.getElementById('auth-status').textContent = `System Online // User: ${user.isAnonymous ? 'Guest' : user.uid}`;
+                    await setupListeners();
+                } else {
+                    try {
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (error) {
+                        console.error("Authentication failed:", error);
+                        document.getElementById('auth-status').textContent = 'Authentication Failure';
+                    }
+                }
+            });
+            
+            renderGameTab();
+            renderLeaderboardTab();
+            renderPersonalStatsTab();
+            renderUserManagementTab();
+            renderDetailedHistoryTabContainers();
+        }
+
+        async function setupListeners() {
+            if (!currentUser) return;
+
+            const usersQuery = query(collection(db, `artifacts/${appId}/public/data/users`), orderBy("createdAt", "desc"));
+            onSnapshot(usersQuery, (snapshot) => {
+                users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                if (document.getElementById('step2-rule-settings')?.classList.contains('hidden')) {
+                    renderPlayerSelection();
+                }
+                updateLeaderboard();
+                renderUserManagementList();
+                renderPersonalStatsTab();
+            });
+
+            const gamesQuery = query(collection(db, `artifacts/${appId}/public/data/games`), orderBy("createdAt", "desc"));
+            onSnapshot(gamesQuery, (snapshot) => {
+                games = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                updateLeaderboard();
+                renderHistoryList();
+                renderDetailedHistoryTables();
+                const statsTab = document.getElementById('personal-stats-tab');
+                const playerId = statsTab.querySelector('#personal-stats-player-select')?.value;
+                if (playerId) {
+                    displayPlayerStats(playerId);
+                }
+            });
+        }
+        
+        // --- Tab & Content Rendering ---
+        window.changeTab = (tabName) => {
+            ['game', 'leaderboard', 'personal-stats', 'history', 'history-raw', 'history-pt', 'users'].forEach(tab => {
+                document.getElementById(`${tab}-tab`).classList.add('hidden');
+                const btn = document.querySelector(`.tab-btn[onclick="changeTab('${tab}')"]`);
+                if(btn) btn.classList.remove('active');
+            });
+            document.getElementById(`${tabName}-tab`).classList.remove('hidden');
+            const btn = document.querySelector(`.tab-btn[onclick="changeTab('${tabName}')"]`);
+            if(btn) btn.classList.add('active');
+        };
+
+        function renderGameTab() {
+            const container = document.getElementById('game-tab');
+            container.innerHTML = `
+                <div id="step1-player-selection" class="cyber-card p-6">
+                    <h2 class="cyber-header text-xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">STEP 1: 雀士選択</h2>
+                    <div id="player-list-for-selection" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4"></div>
+                    <div class="flex justify-end">
+                        <button id="to-step2-btn" onclick="moveToStep2()" class="cyber-btn px-6 py-2 rounded-lg" disabled>進む <i class="fas fa-arrow-right ml-2"></i></button>
+                    </div>
+                </div>
+                <div id="step2-rule-settings" class="cyber-card p-6 hidden">
+                    <h2 class="cyber-header text-xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">STEP 2: ルール選択</h2>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label class="block text-sm font-medium text-gray-400">基準点</label><input type="number" id="base-point" value="25000" class="mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                            <div><label class="block text-sm font-medium text-gray-400">返し点</label><input type="number" id="return-point" value="30000" class="mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-400">順位ウマ</label>
+                            <div class="grid grid-cols-4 gap-2 mt-1">
+                                <input type="number" id="uma-1" placeholder="1位" value="30" class="w-full rounded-md shadow-sm sm:text-sm">
+                                <input type="number" id="uma-2" placeholder="2位" value="10" class="w-full rounded-md shadow-sm sm:text-sm">
+                                <input type="number" id="uma-3" placeholder="3位" value="-10" class="w-full rounded-md shadow-sm sm:text-sm">
+                                <input type="number" id="uma-4" placeholder="4位" value="-30" class="w-full rounded-md shadow-sm sm:text-sm">
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <button onclick="setMLeagueRules()" class="cyber-btn cyber-btn-green px-4 py-2 rounded-lg"><i class="fas fa-star mr-2"></i>Mリーグルール</button>
+                            <div class="text-right"><p class="text-sm text-gray-400">オカ: <span id="oka-display" class="font-bold text-white">20</span></p></div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between mt-6">
+                        <button onclick="backToStep1()" class="cyber-btn px-6 py-2 rounded-lg"><i class="fas fa-arrow-left mr-2"></i>戻る</button>
+                        <button onclick="moveToStep3()" class="cyber-btn px-6 py-2 rounded-lg">進む <i class="fas fa-arrow-right ml-2"></i></button>
+                    </div>
+                </div>
+                <div id="step3-score-input" class="cyber-card p-6 hidden">
+                     <h2 class="cyber-header text-xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">STEP 3: 素点入力</h2>
+                     <div class="overflow-x-auto"><table class="min-w-full"><thead id="score-table-head"></thead><tbody id="score-table-body"></tbody></table></div>
+                     <div class="flex justify-between items-center mt-4">
+                        <button onclick="addHanchan()" class="cyber-btn px-4 py-2 rounded-lg"><i class="fas fa-plus mr-2"></i>半荘追加</button>
+                        <div>
+                            <button onclick="backToStep2()" class="cyber-btn px-6 py-2 rounded-lg mr-2"><i class="fas fa-arrow-left mr-2"></i>戻る</button>
+                            <button onclick="calculateAndSave()" class="cyber-btn cyber-btn-yellow px-6 py-2 rounded-lg"><i class="fas fa-save mr-2"></i>Pt変換して保存</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            renderPlayerSelection();
+            setupRuleEventListeners();
+        }
+        
+        function renderLeaderboardTab() {
+            const container = document.getElementById('leaderboard-tab');
+            container.innerHTML = `
+                <h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">順位表</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-700 leaderboard-table">
+                        <thead class="bg-gray-900 text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            <tr>
+                                <th class="px-4 py-3 text-right sticky-col-1" style="min-width: 60px;">順位</th>
+                                <th class="px-4 py-3 text-left sticky-col-2" style="min-width: 120px;">雀士</th>
+                                <th class="px-4 py-3 text-right">合計Pt</th>
+                                <th class="px-4 py-3 text-right">半荘数</th>
+                                <th class="px-4 py-3 text-right">平均着順</th>
+                                <th class="px-4 py-3 text-right">トップ率</th>
+                                <th class="px-4 py-3 text-right">2着率</th>
+                                <th class="px-4 py-3 text-right">3着率</th>
+                                <th class="px-4 py-3 text-right">ラス率</th>
+                                <th class="px-4 py-3 text-right">連対率</th>
+                                <th class="px-4 py-3 text-right">トビ率</th>
+                                <th class="px-4 py-3 text-right">平均素点</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard-body" class="divide-y divide-gray-700"></tbody>
+                    </table>
+                </div>
+            `;
+            updateLeaderboard();
+        }
+
+        function renderUserManagementTab() {
+            const container = document.getElementById('users-tab');
+            container.innerHTML = `
+                <h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">雀士管理</h2>
+                <div class="flex gap-4 mb-4">
+                    <input type="text" id="new-user-name" class="flex-grow rounded-md shadow-sm sm:text-sm" placeholder="新しい雀士名">
+                    <button onclick="addUser()" class="cyber-btn px-6 py-2 rounded-lg"><i class="fas fa-user-plus mr-2"></i>追加</button>
+                </div>
+                <div id="user-list-management" class="space-y-2"></div>
+            `;
+            renderUserManagementList();
+        }
+
+        function renderPersonalStatsTab() {
+            const container = document.getElementById('personal-stats-tab');
+            const options = users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+            container.innerHTML = `
+                <div class="flex flex-wrap justify-between items-center mb-4">
+                    <h2 class="cyber-header text-2xl font-bold pb-2 text-blue-400">個人成績</h2>
+                    <div class="flex items-center gap-2">
+                        <label for="personal-stats-player-select" class="text-sm text-gray-400">雀士:</label>
+                        <select id="personal-stats-player-select" onchange="displayPlayerStats(this.value)" class="rounded-md p-1">
+                            <option value="">選択してください</option>
+                            ${options}
+                        </select>
+                    </div>
+                </div>
+                <div id="personal-stats-content" class="space-y-6">
+                    <p class="text-gray-500">雀士を選択して成績を表示します。</p>
+                </div>
+            `;
+        }
+
+        function renderDetailedHistoryTabContainers() {
+            const rawContainer = document.getElementById('history-raw-tab');
+            const ptContainer = document.getElementById('history-pt-tab');
+            rawContainer.innerHTML = `<h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">詳細履歴 (素点)</h2><div id="history-raw-list" class="overflow-x-auto"></div>`;
+            ptContainer.innerHTML = `<h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">詳細履歴 (PT)</h2><div id="history-pt-list" class="overflow-x-auto"></div>`;
+        }
+
+        // --- Component Rendering ---
+        
+        function renderPlayerSelection() {
+            const container = document.getElementById('player-list-for-selection');
+            if (!container) return;
+            container.innerHTML = '';
+            users.forEach(user => {
+                const isSelected = selectedPlayers.some(p => p.id === user.id);
+                const isDisabled = !isSelected && selectedPlayers.length >= 4;
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <input type="checkbox" id="player-${user.id}" class="player-checkbox hidden" value="${user.id}" name="${user.name}" onchange="togglePlayerSelection(this)" ${isSelected ? 'checked' : ''} ${isDisabled ? 'disabled' : ''}>
+                    <label for="player-${user.id}" class="block text-center border-2 border-gray-600 rounded-lg p-3 cursor-pointer transition-colors duration-200 hover:border-blue-500">${user.name}</label>
+                `;
+                container.appendChild(div);
+            });
+        }
+        
+        function renderUserManagementList() {
+            const container = document.getElementById('user-list-management');
+            if (!container) return;
+            container.innerHTML = users.length === 0 
+                ? `<p class="text-gray-500">登録されている雀士がいません。</p>`
+                : users.map(user => `
+                    <div class="flex justify-between items-center bg-gray-900 p-3 rounded-lg">
+                        <span class="font-medium">${user.name}</span>
+                        <button onclick="confirmDeleteUser('${user.id}', '${user.name}')" class="text-red-500 hover:text-red-400"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                `).join('');
+        }
+        
+        function updateLeaderboard() {
+            const allStats = calculateAllPlayerStats();
+            const rankedUsers = Object.values(allStats).filter(u => u.totalHanchans > 0);
+            if (rankedUsers.length === 0) {
+                const leaderboardBody = document.getElementById('leaderboard-body');
+                if(leaderboardBody) leaderboardBody.innerHTML = `<tr><td colspan="12" class="text-center py-4 text-gray-500">NO DATA</td></tr>`;
+                return;
+            }
+
+            const minMax = {};
+            const statFields = {
+                avgRank: 'lower', thirdRate: 'lower', lastRate: 'lower', bustedRate: 'lower',
+                topRate: 'higher', secondRate: 'higher', rentaiRate: 'higher', avgRawScore: 'higher'
+            };
+
+            rankedUsers.forEach(u => {
+                u.avgRank = u.totalHanchans > 0 ? u.ranks.reduce((sum, count, i) => sum + count * (i + 1), 0) / u.totalHanchans : 0;
+                u.topRate = u.totalHanchans > 0 ? (u.ranks[0] / u.totalHanchans) * 100 : 0;
+                u.secondRate = u.totalHanchans > 0 ? (u.ranks[1] / u.totalHanchans) * 100 : 0;
+                u.thirdRate = u.totalHanchans > 0 ? (u.ranks[2] / u.totalHanchans) * 100 : 0;
+                u.rentaiRate = u.totalHanchans > 0 ? ((u.ranks[0] + u.ranks[1]) / u.totalHanchans) * 100 : 0;
+                u.lastRate = u.totalHanchans > 0 ? (u.ranks[3] / u.totalHanchans) * 100 : 0;
+                u.bustedRate = u.totalHanchans > 0 ? (u.bustedCount / u.totalHanchans) * 100 : 0;
+                u.avgRawScore = u.totalHanchans > 0 ? Math.round((u.totalRawScore / u.totalHanchans) / 100) * 100 : 0;
+            });
+
+            Object.keys(statFields).forEach(field => {
+                const values = rankedUsers.map(u => u[field]);
+                minMax[field] = { min: Math.min(...values), max: Math.max(...values) };
+            });
+
+            rankedUsers.sort((a, b) => b.totalPoints - a.totalPoints);
+            
+            const leaderboardBody = document.getElementById('leaderboard-body');
+            if (!leaderboardBody) return;
+            
+            leaderboardBody.innerHTML = rankedUsers.map((user, index) => {
+                const getClass = (field, value) => {
+                    if (rankedUsers.length <= 1) return '';
+                    if (minMax[field].min === minMax[field].max) return '';
+                    if (statFields[field] === 'higher') {
+                        if (value === minMax[field].max) return 'text-rank-1';
+                        if (value === minMax[field].min) return 'text-rank-4';
+                    } else if (statFields[field] === 'lower') {
+                        if (value === minMax[field].min) return 'text-rank-1';
+                        if (value === minMax[field].max) return 'text-rank-4';
+                    }
+                    return '';
+                };
+                
+                return `
+                    <tr class="hover:bg-gray-800 font-m-gothic">
+                        <td class="px-4 py-4 whitespace-nowrap text-right sticky-col-1">${index + 1}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-left font-medium text-blue-400 cursor-pointer hover:underline sticky-col-2" onclick="showPlayerStats('${user.id}')">${user.name}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right font-bold ${user.totalPoints >= 0 ? 'text-green-400' : 'text-red-400'}">${(user.totalPoints).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right">${user.totalHanchans.toLocaleString()}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right ${getClass('avgRank', user.avgRank)}">${user.avgRank.toFixed(2)}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right ${getClass('topRate', user.topRate)}">${user.topRate.toFixed(2)}%</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right ${getClass('secondRate', user.secondRate)}">${user.secondRate.toFixed(2)}%</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right ${getClass('thirdRate', user.thirdRate)}">${user.thirdRate.toFixed(2)}%</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right ${getClass('lastRate', user.lastRate)}">${user.lastRate.toFixed(2)}%</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right ${getClass('rentaiRate', user.rentaiRate)}">${user.rentaiRate.toFixed(2)}%</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right ${getClass('bustedRate', user.bustedRate)}">${user.bustedRate.toFixed(2)}%</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-right ${getClass('avgRawScore', user.avgRawScore)}">${user.avgRawScore.toLocaleString()}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderHistoryList() {
+            const container = document.getElementById('history-tab');
+            container.innerHTML = `<h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">対局履歴</h2>`;
+            if (games.length === 0) {
+                container.innerHTML += `<p class="text-gray-500">対局履歴がありません。</p>`;
+                return;
+            }
+            const listContainer = document.createElement('div');
+            listContainer.className = 'space-y-4';
+            listContainer.innerHTML = games.map(game => {
+                    const date = new Date(game.createdAt.seconds * 1000).toLocaleString('ja-JP');
+                    const winner = Object.entries(game.totalPoints).sort((a, b) => b[1] - a[1])[0];
+                    const winnerUser = users.find(u => u.id === winner[0]);
+                    return `
+                        <div class="p-4 rounded-lg bg-gray-900 border border-gray-700 hover:border-blue-500 cursor-pointer" onclick="showGameDetails('${game.id}')">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <p class="font-bold text-lg">${date}</p>
+                                    <p class="text-sm text-gray-400">${game.playerNames.join(', ')}</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-sm">WINNER</p>
+                                    <p class="font-bold text-green-400">${winnerUser ? winnerUser.name : 'N/A'} (+${winner[1].toFixed(1)})</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            container.appendChild(listContainer);
+        }
+
+        function renderDetailedHistoryTables() {
+            const allHanchans = [];
+            games.forEach(game => {
+                game.scores.forEach((hanchan, index) => {
+                    allHanchans.push({
+                        date: new Date(game.createdAt.seconds * 1000).toLocaleString('ja-JP'),
+                        gameId: game.id,
+                        hanchanNum: index + 1,
+                        players: game.playerNames,
+                        rawScores: hanchan.rawScores,
+                        points: hanchan.points
+                    });
+                });
+            });
+
+            const createTable = (dataType) => {
+                let tableHtml = `<table class="min-w-full divide-y divide-gray-700 font-m-gothic">
+                    <thead class="bg-gray-900 text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        <tr>
+                            <th class="px-4 py-3 text-left">日時</th>
+                            ${users.map(u => `<th class="px-4 py-3 text-right">${u.name}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-700">`;
+                
+                allHanchans.forEach(hanchan => {
+                    const scores = hanchan[dataType];
+                    const scoreGroups = {};
+                    Object.entries(hanchan.rawScores).forEach(([pId, score]) => {
+                        if (!scoreGroups[score]) scoreGroups[score] = [];
+                        scoreGroups[score].push(pId);
+                    });
+                    const sortedScores = Object.keys(scoreGroups).map(Number).sort((a, b) => b - a);
+                    
+                    const ranks = {};
+                    let rankCursor = 1;
+                    sortedScores.forEach(score => {
+                        const playersInGroup = scoreGroups[score];
+                        playersInGroup.forEach(pId => { ranks[pId] = rankCursor; });
+                        rankCursor += playersInGroup.length;
+                    });
+                    
+                    tableHtml += `<tr><td class="px-4 py-2 whitespace-nowrap">${hanchan.date} (#${hanchan.hanchanNum})</td>`;
+                    users.forEach(user => {
+                        if (scores[user.id] !== undefined) {
+                            const rank = ranks[user.id];
+                            let rankClass = '';
+                            if (rank === 1) rankClass = 'text-rank-1';
+                            if (rank === 4) rankClass = 'text-rank-4';
+                            tableHtml += `<td class="px-4 py-2 text-right ${rankClass}">${dataType === 'points' ? scores[user.id].toFixed(1) : scores[user.id].toLocaleString()}</td>`;
+                        } else {
+                            tableHtml += `<td class="px-4 py-2 text-right text-gray-600">-</td>`;
+                        }
+                    });
+                    tableHtml += `</tr>`;
+                });
+
+                tableHtml += `</tbody></table>`;
+                return tableHtml;
+            };
+            
+            document.getElementById('history-raw-list').innerHTML = createTable('rawScores');
+            document.getElementById('history-pt-list').innerHTML = createTable('points');
+        }
+
+        // --- Stats Page ---
+        window.showPlayerStats = (playerId) => {
+            changeTab('personal-stats');
+            const select = document.getElementById('personal-stats-player-select');
+            select.value = playerId;
+            displayPlayerStats(playerId);
+        };
+
+        window.displayPlayerStats = (playerId) => {
+            const container = document.getElementById('personal-stats-content');
+            if (!playerId) {
+                container.innerHTML = `<p class="text-gray-500">雀士を選択して成績を表示します。</p>`;
+                return;
+            }
+            
+            const comparisonOptions = users
+                .filter(u => u.id !== playerId)
+                .map(u => `
+                    <div class="mr-4">
+                        <input type="checkbox" id="compare-${u.id}" value="${u.id}" class="comparison-checkbox" onchange="updateComparisonCharts('${playerId}')">
+                        <label for="compare-${u.id}" class="ml-1">${u.name}</label>
+                    </div>
+                `).join('');
+
+            container.innerHTML = `
+                <div id="detailed-stats-container"></div>
+                <div class="cyber-card p-4 mb-6">
+                    <h4 class="font-bold mb-2">比較対象</h4>
+                    <div id="comparison-checkboxes" class="flex flex-wrap">${comparisonOptions}</div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="cyber-card p-6">
+                        <h3 class="cyber-header text-xl font-bold mb-4 text-center">順位分布</h3>
+                        <div class="w-full h-64 mx-auto"><canvas id="rank-chart"></canvas></div>
+                    </div>
+                    <div class="cyber-card p-6">
+                        <h3 class="cyber-header text-xl font-bold mb-4 text-center">ポイント推移</h3>
+                        <div class="w-full h-64 mx-auto"><canvas id="point-history-chart"></canvas></div>
+                    </div>
+                </div>
+            `;
+            
+            renderDetailedStats(playerId);
+            renderStatsCharts(playerId, []);
+        }
+        
+        window.updateComparisonCharts = (mainPlayerId) => {
+            const checkedBoxes = document.querySelectorAll('#comparison-checkboxes input:checked');
+            const comparisonIds = Array.from(checkedBoxes).map(cb => cb.value);
+            renderStatsCharts(mainPlayerId, comparisonIds);
+        };
+
+        function renderDetailedStats(playerId) {
+            const container = document.getElementById('detailed-stats-container');
+            if (!container) return;
+            const allStats = calculateAllPlayerStats();
+            const playerStats = allStats[playerId];
+            if (!playerStats) return;
+            
+            const totalHanchans = playerStats.totalHanchans;
+            const lastRate = totalHanchans > 0 ? (playerStats.ranks[3] / totalHanchans) * 100 : 0;
+            const bustedRate = totalHanchans > 0 ? (playerStats.bustedCount / totalHanchans) * 100 : 0;
+            const avgRawScore = totalHanchans > 0 ? Math.round((playerStats.totalRawScore / totalHanchans) / 100) * 100 : 0;
+            
+            container.innerHTML = `
+                <div class="cyber-card p-6 mb-6">
+                    <div class="grid grid-cols-3 gap-4 text-center">
+                        <div><p class="text-sm text-gray-400">平均素点</p><p class="text-2xl font-bold text-blue-400 font-m-gothic">${avgRawScore.toLocaleString()}</p></div>
+                        <div><p class="text-sm text-gray-400">ラス率</p><p class="text-2xl font-bold text-red-400 font-m-gothic">${lastRate.toFixed(2)}%</p></div>
+                        <div><p class="text-sm text-gray-400">トビ率</p><p class="text-2xl font-bold text-red-500 font-m-gothic">${bustedRate.toFixed(2)}%</p></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderStatsCharts(mainPlayerId, comparisonIds) {
+            const allStats = calculateAllPlayerStats();
+            const colors = ['#58a6ff', '#3fb950', '#f5655f', '#f2cc8f', '#e0aaff', '#9bf6ff'];
+            
+            const pointHistoryDatasets = [];
+            const mainPlayerData = getPlayerPointHistory(mainPlayerId);
+            pointHistoryDatasets.push({
+                label: allStats[mainPlayerId].name,
+                data: mainPlayerData.map(d => d.cumulativePoints),
+                borderColor: colors[0],
+                backgroundColor: colors[0] + '33', // Add alpha
+                fill: true, tension: 0.1
+            });
+            comparisonIds.forEach((id, index) => {
+                const playerData = getPlayerPointHistory(id);
+                pointHistoryDatasets.push({
+                    label: allStats[id].name,
+                    data: playerData.map(d => d.cumulativePoints),
+                    borderColor: colors[(index + 1) % colors.length],
+                    backgroundColor: colors[(index + 1) % colors.length] + '33',
+                    fill: true, tension: 0.1
+                });
+            });
+
+            if (pointHistoryChart) pointHistoryChart.destroy();
+            pointHistoryChart = new Chart(document.getElementById('point-history-chart').getContext('2d'), {
+                type: 'line',
+                data: { labels: mainPlayerData.map(d => d.gameNum), datasets: pointHistoryDatasets },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#c9d1d9' }}}, scales: { x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } }, y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } } } }
+            });
+
+            const rankDatasets = [];
+            rankDatasets.push({
+                label: allStats[mainPlayerId].name,
+                data: allStats[mainPlayerId].ranks,
+                backgroundColor: colors[0],
+            });
+            comparisonIds.forEach((id, index) => {
+                rankDatasets.push({
+                    label: allStats[id].name,
+                    data: allStats[id].ranks,
+                    backgroundColor: colors[(index + 1) % colors.length],
+                });
+            });
+
+            if (rankChart) rankChart.destroy();
+            rankChart = new Chart(document.getElementById('rank-chart').getContext('2d'), {
+                type: 'bar',
+                data: { labels: ['1位', '2位', '3位', '4位'], datasets: rankDatasets },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { color: '#c9d1d9' }}}, scales: { x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } }, y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } } } }
+            });
+        }
+        
+        function calculateAllPlayerStats() {
+            const stats = {};
+            users.forEach(u => {
+                stats[u.id] = { id: u.id, name: u.name, totalPoints: 0, gameCount: 0, ranks: [0, 0, 0, 0], bustedCount: 0, totalRawScore: 0, totalHanchans: 0 };
+            });
+
+            const sortedGames = [...games].sort((a, b) => a.createdAt.seconds - b.createdAt.seconds);
+
+            sortedGames.forEach(game => {
+                game.playerIds.forEach(pId => { if (stats[pId]) stats[pId].gameCount++; });
+                Object.entries(game.totalPoints).forEach(([playerId, point]) => { if (stats[playerId]) stats[playerId].totalPoints += point; });
+
+                game.scores.forEach(hanchan => {
+                    Object.entries(hanchan.rawScores).forEach(([playerId, rawScore]) => {
+                        if (stats[playerId]) {
+                            stats[playerId].totalRawScore += rawScore;
+                            if (rawScore < 0) stats[playerId].bustedCount++;
+                        }
+                    });
+                    
+                    const scoreGroups = {};
+                    Object.entries(hanchan.rawScores).forEach(([pId, score]) => {
+                        if (!scoreGroups[score]) scoreGroups[score] = [];
+                        scoreGroups[score].push(pId);
+                    });
+                    const sortedScores = Object.keys(scoreGroups).map(Number).sort((a, b) => b - a);
+                    
+                    let rankCursor = 0;
+                    sortedScores.forEach(score => {
+                        const playersInGroup = scoreGroups[score];
+                        playersInGroup.forEach(pId => {
+                            if (stats[pId]) {
+                                stats[pId].ranks[rankCursor]++;
+                            }
+                        });
+                        rankCursor += playersInGroup.length;
+                    });
+
+                    Object.keys(hanchan.rawScores).forEach(pId => {
+                        if(stats[pId]) stats[pId].totalHanchans++;
+                    });
+                });
+            });
+            return stats;
+        }
+
+        function getPlayerPointHistory(playerId) {
+            let cumulativePoints = 0;
+            const history = [{ gameNum: 0, cumulativePoints: 0 }];
+            const playerGames = [...games]
+                .filter(g => g.playerIds.includes(playerId))
+                .sort((a, b) => a.createdAt.seconds - b.createdAt.seconds);
+
+            playerGames.forEach((game, index) => {
+                cumulativePoints += game.totalPoints[playerId];
+                history.push({ gameNum: index + 1, cumulativePoints: cumulativePoints });
+            });
+            return history;
+        }
+
+        window.addUser = async () => {
+            const nameInput = document.getElementById('new-user-name');
+            const name = nameInput.value.trim();
+            if (!name) { showModalMessage("雀士名を入力してください。"); return; }
+            if (users.some(u => u.name === name)) { showModalMessage("同じ名前の雀士が既に存在します。"); return; }
+            try {
+                const usersCollectionRef = collection(db, `artifacts/${appId}/public/data/users`);
+                await addDoc(usersCollectionRef, { name: name, createdAt: new Date() });
+                nameInput.value = '';
+                showModalMessage(`「${name}」さんを登録しました。`);
+            } catch (error) { console.error("Error adding user: ", error); showModalMessage("ユーザーの追加に失敗しました。"); }
+        };
+
+        window.confirmDeleteUser = (id, name) => {
+            showModal(`
+                <h3 class="cyber-header text-xl font-bold text-red-400 mb-4">削除確認</h3>
+                <p>「${name}」を削除しますか？<br>関連する全ての対局データも永久に削除されます。この操作は元に戻せません。</p>
+                <div class="flex justify-end gap-4 mt-6">
+                    <button onclick="closeModal()" class="cyber-btn px-4 py-2 rounded-lg">キャンセル</button>
+                    <button onclick="executeDeleteUser('${id}')" class="cyber-btn cyber-btn-red px-4 py-2 rounded-lg">削除実行</button>
+                </div>
+            `);
+        };
+
+        window.executeDeleteUser = async (id) => {
+            closeModal();
+            try {
+                const batch = writeBatch(db);
+                const gamesQuery = query(collection(db, `artifacts/${appId}/public/data/games`), where('playerIds', 'array-contains', id));
+                const gamesSnapshot = await getDocs(gamesQuery);
+                gamesSnapshot.forEach(doc => batch.delete(doc.ref));
+                const userDocRef = doc(db, `artifacts/${appId}/public/data/users`, id);
+                batch.delete(userDocRef);
+                await batch.commit();
+                showModalMessage(`ユーザーと関連データを削除しました。`);
+                resetGame();
+            } catch (error) { console.error("Error deleting user:", error); showModalMessage("削除に失敗しました。"); }
+        };
+        
+        window.calculateAndSave = async () => {
+            const basePoint = Number(document.getElementById('base-point').value);
+            const returnPoint = Number(document.getElementById('return-point').value);
+            const uma = [
+                Number(document.getElementById('uma-1').value), Number(document.getElementById('uma-2').value),
+                Number(document.getElementById('uma-3').value), Number(document.getElementById('uma-4').value)
+            ];
+            const oka = ((returnPoint - basePoint) * 4) / 1000;
+            
+            const hanchanData = [];
+            const roundRows = document.getElementById('score-table-body').children;
+            for (let i = 0; i < roundRows.length; i++) {
+                const row = roundRows[i];
+                const inputs = row.querySelectorAll('.score-input');
+                const scores = {};
+                let total = 0;
+                let hasEmpty = false;
+                inputs.forEach(input => {
+                    if (input.value.trim() === '' || input.value.trim() === '-') {
+                        hasEmpty = true;
+                    }
+                    const score = Number(input.value);
+                    scores[input.dataset.playerId] = score;
+                    total += score;
+                });
+
+                if(hasEmpty){
+                    showModalMessage(`半荘 #${i+1} の全ての素点を入力してください。`);
+                    return;
+                }
+
+                if (Math.round(total) !== basePoint * 4) {
+                    showModalMessage(`半荘 #${i+1} の合計点が ${basePoint*4} になっていません。(現在: ${total})`);
+                    return;
+                }
+                hanchanData.push({ rawScores: scores });
+            }
+
+            if (hanchanData.length !== roundRows.length) return; 
+
+            const totalPoints = {};
+            selectedPlayers.forEach(p => totalPoints[p.id] = 0);
+
+            hanchanData.forEach(hanchan => {
+                const scoreGroups = {};
+                Object.entries(hanchan.rawScores).forEach(([playerId, score]) => {
+                    if (!scoreGroups[score]) scoreGroups[score] = [];
+                    scoreGroups[score].push(playerId);
+                });
+
+                const sortedScores = Object.keys(scoreGroups).map(Number).sort((a, b) => b - a);
+                
+                let rankCursor = 0;
+                const points = {};
+
+                sortedScores.forEach(score => {
+                    const playersInGroup = scoreGroups[score];
+                    const groupSize = playersInGroup.length;
+                    
+                    const umaSlice = uma.slice(rankCursor, rankCursor + groupSize);
+                    const totalUma = umaSlice.reduce((a, b) => a + b, 0);
+                    const sharedUma = totalUma / groupSize;
+                    
+                    let sharedOka = 0;
+                    if (rankCursor === 0) {
+                        sharedOka = oka / groupSize;
+                    }
+
+                    playersInGroup.forEach(playerId => {
+                        const pointWithoutUma = (Number(score) - returnPoint) / 1000;
+                        points[playerId] = pointWithoutUma + sharedUma + sharedOka;
+                    });
+                    rankCursor += groupSize;
+                });
+                
+                hanchan.points = points;
+                Object.keys(points).forEach(playerId => {
+                    totalPoints[playerId] += points[playerId];
+                });
+            });
+            
+            try {
+                await addDoc(collection(db, `artifacts/${appId}/public/data/games`), {
+                    createdAt: new Date(), playerIds: selectedPlayers.map(p => p.id), playerNames: selectedPlayers.map(p => p.name),
+                    settings: { basePoint, returnPoint, uma }, scores: hanchanData, totalPoints: totalPoints
+                });
+                showModalMessage("対局結果を保存しました！");
+                resetGame();
+            } catch (error) { console.error("Error saving game: ", error); showModalMessage("データの保存に失敗しました。"); }
+        };
+
+        function showModal(content) {
+            document.getElementById('modal-content').innerHTML = content;
+            document.getElementById('modal').classList.remove('hidden');
+        }
+        function showModalMessage(message) {
+            showModal(`<p class="text-lg text-center">${message}</p><div class="flex justify-end mt-6"><button onclick="closeModal()" class="cyber-btn px-6 py-2 rounded-lg">閉じる</button></div>`);
+        }
+        window.closeModal = () => document.getElementById('modal').classList.add('hidden');
+
+        window.showGameDetails = (gameId) => {
+            const game = games.find(g => g.id === gameId);
+            if (!game) return;
+            const date = new Date(game.createdAt.seconds * 1000).toLocaleString('ja-JP');
+            
+            const playerHeaders = game.playerIds.map(pId => {
+                const player = users.find(u => u.id === pId);
+                return `<th class="px-2 py-2 text-right">${player ? player.name : 'N/A'}</th>`;
+            }).join('');
+
+            const createTableBody = (dataType) => {
+                return game.scores.map((hanchan, index) => {
+                    const scores = hanchan[dataType];
+                    
+                    const scoreGroups = {};
+                    Object.entries(hanchan.rawScores).forEach(([pId, score]) => {
+                        if (!scoreGroups[score]) scoreGroups[score] = [];
+                        scoreGroups[score].push(pId);
+                    });
+                    const sortedScores = Object.keys(scoreGroups).map(Number).sort((a, b) => b - a);
+                    
+                    const ranks = {};
+                    let rankCursor = 1;
+                    sortedScores.forEach(score => {
+                        const playersInGroup = scoreGroups[score];
+                        playersInGroup.forEach(pId => {
+                            ranks[pId] = rankCursor;
+                        });
+                        rankCursor += playersInGroup.length;
+                    });
+
+                    const scoreCells = game.playerIds.map(pId => {
+                        const score = scores[pId];
+                        const rank = ranks[pId];
+                        let rankClass = '';
+                        if (rank === 1) rankClass = 'text-rank-1';
+                        if (rank === 4) rankClass = 'text-rank-4';
+                        return `<td class="px-2 py-2 text-right font-m-gothic ${rankClass}">${dataType === 'points' ? score.toFixed(1) : score.toLocaleString()}</td>`;
+                    }).join('');
+                    return `<tr><td class="px-2 py-2 text-center font-bold">#${index + 1}</td>${scoreCells}</tr>`;
+                }).join('');
+            };
+
+            const pointsBody = createTableBody('points');
+            const rawScoresBody = createTableBody('rawScores');
+
+            let detailsHtml = `
+                <h3 class="cyber-header text-xl font-bold text-blue-400 mb-2">${date}</h3>
+                <div class="space-y-6">
+                    <div>
+                        <h4 class="font-bold mb-2">ポイント</h4>
+                        <table class="min-w-full text-sm"><thead><tr><th class="px-2 py-2 text-center">#</th>${playerHeaders}</tr></thead><tbody class="divide-y divide-gray-700">${pointsBody}</tbody></table>
+                    </div>
+                    <div>
+                        <h4 class="font-bold mb-2">素点</h4>
+                        <table class="min-w-full text-sm"><thead><tr><th class="px-2 py-2 text-center">#</th>${playerHeaders}</tr></thead><tbody class="divide-y divide-gray-700">${rawScoresBody}</tbody></table>
+                    </div>
+                </div>
+                <div class="flex justify-end mt-6"><button onclick="closeModal()" class="cyber-btn px-4 py-2 rounded-lg">閉じる</button></div>
+            `;
+            showModal(detailsHtml);
+        };
+        
+        function lockUnlockStep(stepNum, lock) {
+            const stepDiv = document.getElementById(`step${stepNum}-player-selection`) || document.getElementById(`step${stepNum}-rule-settings`);
+            if (!stepDiv) return;
+            const elements = stepDiv.querySelectorAll('input, button');
+            elements.forEach(el => {
+                if (!el.id.startsWith('to-step')) {
+                    el.disabled = lock;
+                }
+            });
+        }
+
+        window.moveToStep2 = () => {
+            lockUnlockStep(1, true);
+            const step2 = document.getElementById('step2-rule-settings');
+            step2.classList.remove('hidden');
+            step2.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        };
+        
+        window.moveToStep3 = () => {
+            lockUnlockStep(2, true);
+            const step3 = document.getElementById('step3-score-input');
+            step3.classList.remove('hidden');
+            setupScoreTable();
+            step3.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        };
+
+        window.backToStep1 = () => {
+            document.getElementById('step2-rule-settings').classList.add('hidden');
+            lockUnlockStep(1, false);
+            document.getElementById('step1-player-selection').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        };
+
+        window.backToStep2 = () => {
+            document.getElementById('step3-score-input').classList.add('hidden');
+            lockUnlockStep(2, false);
+            document.getElementById('step2-rule-settings').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        };
+
+        const setupRuleEventListeners = () => {
+            document.getElementById('base-point')?.addEventListener('input', updateOkaDisplay);
+            document.getElementById('return-point')?.addEventListener('input', updateOkaDisplay);
+        };
+        const updateOkaDisplay = () => {
+             const base = Number(document.getElementById('base-point')?.value || 0);
+             const ret = Number(document.getElementById('return-point')?.value || 0);
+             const oka = ((ret - base) * 4) / 1000;
+             const display = document.getElementById('oka-display');
+             if(display) display.textContent = oka.toFixed(1);
+        };
+        window.setMLeagueRules = () => {
+            document.getElementById('base-point').value = 25000; document.getElementById('return-point').value = 30000;
+            document.getElementById('uma-1').value = 30; document.getElementById('uma-2').value = 10;
+            document.getElementById('uma-3').value = -10; document.getElementById('uma-4').value = -30;
+            updateOkaDisplay();
+        };
+        window.togglePlayerSelection = (checkbox) => {
+            if (checkbox.checked) { if (selectedPlayers.length < 4) selectedPlayers.push({ id: checkbox.value, name: checkbox.name }); }
+            else { selectedPlayers = selectedPlayers.filter(p => p.id !== checkbox.value); }
+            document.getElementById('to-step2-btn').disabled = selectedPlayers.length !== 4;
+            renderPlayerSelection();
+        };
+
+        const setupScoreTable = () => {
+            document.getElementById('score-table-head').innerHTML = `<tr class="bg-gray-900"><th class="p-2 text-left">#</th>${selectedPlayers.map(p => `<th class="p-2 text-left">${p.name}</th>`).join('')}<th class="p-2 text-left">Σ</th></tr>`;
+            document.getElementById('score-table-body').innerHTML = '';
+            addHanchan();
+        };
+        window.addHanchan = () => {
+            const body = document.getElementById('score-table-body');
+            const roundNum = body.children.length + 1;
+            const tr = document.createElement('tr');
+            tr.id = `round-${roundNum}`;
+            tr.className = 'border-b border-gray-700';
+            tr.innerHTML = `<td class="p-2 font-semibold">#${roundNum}</td>${selectedPlayers.map(p => `<td class="p-2"><input type="text" inputmode="numeric" class="score-input w-full rounded-md sm:text-sm" data-player-id="${p.id}" oninput="this.value = this.value.replace(/[^\\d-]/g, '')" onchange="updateRoundTotal(${roundNum})"></td>`).join('')}<td class="p-2 font-semibold" id="total-${roundNum}">0</td>`;
+            body.appendChild(tr);
+            tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        };
+        window.updateRoundTotal = (roundNum) => {
+            const roundRow = document.getElementById(`round-${roundNum}`);
+            const inputs = Array.from(roundRow.querySelectorAll('.score-input'));
+            let total = 0;
+            let emptyInput = null;
+            let filledCount = 0;
+            
+            inputs.forEach(input => {
+                if (input.value.trim() !== '' && input.value.trim() !== '-') {
+                    total += Number(input.value);
+                    filledCount++;
+                } else {
+                    emptyInput = input;
+                }
+            });
+
+            if (filledCount === 3 && emptyInput) {
+                const basePoint = Number(document.getElementById('base-point').value);
+                const targetTotal = basePoint * 4;
+                const lastScore = targetTotal - total;
+                emptyInput.value = lastScore;
+                total += lastScore;
+            }
+
+            const totalCell = document.getElementById(`total-${roundNum}`);
+            totalCell.textContent = total.toLocaleString();
+            const basePoint = Number(document.getElementById('base-point').value);
+            totalCell.classList.toggle('text-red-500', Math.round(total) !== basePoint * 4);
+        };
+        const resetGame = () => {
+            selectedPlayers = [];
+            renderGameTab();
+            changeTab('game');
+        };
+
+        initializeAppAndAuth();
+    </script>
+</body>
+</html>
