@@ -172,16 +172,16 @@
         let pointHistoryChart = null;
         
         // --- Firebase Config ---
-　　　　　// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyBwWqWxRy5JlcQwbc5KAXRvH0swd0pOzSg",
-  authDomain: "edogawa-m-league-summary.firebaseapp.com",
-  projectId: "edogawa-m-league-summary",
-  storageBucket: "edogawa-m-league-summary.firebasestorage.app",
-  messagingSenderId: "587593171009",
-  appId: "1:587593171009:web:b48dd5b809f2d2ce8886c0",
-  measurementId: "G-XMYXPG06QF"
-};
+        const firebaseConfig = {
+            apiKey: "AIzaSyBwWqWxRy5JlcQwbc5KAXRvH0swd0pOzSg",
+            authDomain: "edogawa-m-league-summary.firebaseapp.com",
+            projectId: "edogawa-m-league-summary",
+            storageBucket: "edogawa-m-league-summary.firebasestorage.app",
+            messagingSenderId: "587593171009",
+            appId: "1:587593171009:web:b48dd5b809f2d2ce8886c0",
+            measurementId: "G-XMYXPG06QF"
+        };
+
         // --- Initialization ---
         function initializeAppAndAuth() {
             const app = initializeApp(firebaseConfig);
@@ -195,11 +195,7 @@ const firebaseConfig = {
                     await setupListeners();
                 } else {
                     try {
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await signInWithCustomToken(auth, __initial_auth_token);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
+                        await signInAnonymously(auth);
                     } catch (error) {
                         console.error("Authentication failed:", error);
                         document.getElementById('auth-status').textContent = 'Authentication Failure';
@@ -217,8 +213,8 @@ const firebaseConfig = {
         async function setupListeners() {
             if (!currentUser) return;
 
-            const usersQuery = query(collection(db, `artifacts/${appId}/public/data/users`));
-            onSnapshot(usersQuery, (snapshot) => {
+            const usersCollectionRef = collection(db, `users`);
+            onSnapshot(usersCollectionRef, (snapshot) => {
                 users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 users.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
 
@@ -230,7 +226,8 @@ const firebaseConfig = {
                 renderPersonalStatsTab();
             });
 
-            const gamesQuery = query(collection(db, `artifacts/${appId}/public/data/games`), orderBy("createdAt", "desc"));
+            const gamesCollectionRef = collection(db, `games`);
+            const gamesQuery = query(gamesCollectionRef, orderBy("createdAt", "desc"));
             onSnapshot(gamesQuery, (snapshot) => {
                 games = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 updateLeaderboard();
@@ -294,6 +291,13 @@ const firebaseConfig = {
                 </div>
                 <div id="step3-score-input" class="cyber-card p-6 hidden">
                      <h2 class="cyber-header text-xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">STEP 3: 素点入力</h2>
+                     <div class="mb-4">
+                         <label for="game-date" class="block text-sm font-medium text-gray-400 mb-1">対局日</label>
+                         <div class="flex gap-2">
+                             <input type="text" id="game-date" class="flex-grow rounded-md shadow-sm sm:text-sm" placeholder="yyyy/m/d(aaa)">
+                             <button onclick="setTodayDate()" class="cyber-btn px-4 py-2 rounded-lg">今日</button>
+                         </div>
+                     </div>
                      <div class="overflow-x-auto"><table class="min-w-full"><thead id="score-table-head"></thead><tbody id="score-table-body"></tbody></table></div>
                      <div class="flex justify-between items-center mt-4 flex-wrap gap-2">
                         <button onclick="addHanchan()" class="cyber-btn px-4 py-2 rounded-lg"><i class="fas fa-plus mr-2"></i>半荘追加</button>
@@ -488,7 +492,7 @@ const firebaseConfig = {
             const listContainer = document.createElement('div');
             listContainer.className = 'space-y-4';
             listContainer.innerHTML = games.map(game => {
-                    const date = new Date(game.createdAt.seconds * 1000).toLocaleString('ja-JP');
+                    const date = game.gameDate || new Date(game.createdAt.seconds * 1000).toLocaleString('ja-JP');
                     const winner = Object.entries(game.totalPoints).sort((a, b) => b[1] - a[1])[0];
                     const winnerUser = users.find(u => u.id === winner[0]);
                     return `
@@ -514,7 +518,7 @@ const firebaseConfig = {
             games.forEach(game => {
                 game.scores.forEach((hanchan, index) => {
                     allHanchans.push({
-                        date: new Date(game.createdAt.seconds * 1000).toLocaleString('ja-JP'),
+                        date: game.gameDate || new Date(game.createdAt.seconds * 1000).toLocaleString('ja-JP'),
                         gameId: game.id,
                         hanchanNum: index + 1,
                         players: game.playerNames,
@@ -768,7 +772,7 @@ const firebaseConfig = {
             if (!name) { showModalMessage("雀士名を入力してください。"); return; }
             if (users.some(u => u.name === name)) { showModalMessage("同じ名前の雀士が既に存在します。"); return; }
             try {
-                const usersCollectionRef = collection(db, `artifacts/${appId}/public/data/users`);
+                const usersCollectionRef = collection(db, `users`);
                 await addDoc(usersCollectionRef, { name: name, createdAt: new Date() });
                 nameInput.value = '';
                 showModalMessage(`「${name}」さんを登録しました。`);
@@ -790,10 +794,10 @@ const firebaseConfig = {
             closeModal();
             try {
                 const batch = writeBatch(db);
-                const gamesQuery = query(collection(db, `artifacts/${appId}/public/data/games`), where('playerIds', 'array-contains', id));
+                const gamesQuery = query(collection(db, `games`), where('playerIds', 'array-contains', id));
                 const gamesSnapshot = await getDocs(gamesQuery);
                 gamesSnapshot.forEach(doc => batch.delete(doc.ref));
-                const userDocRef = doc(db, `artifacts/${appId}/public/data/users`, id);
+                const userDocRef = doc(db, `users`, id);
                 batch.delete(userDocRef);
                 await batch.commit();
                 showModalMessage(`ユーザーと関連データを削除しました。`);
@@ -828,7 +832,7 @@ const firebaseConfig = {
                 });
 
                 if (!isComplete) {
-                    if (onlyCompleted) continue; // Skip incomplete rounds for status check
+                    if (onlyCompleted) continue;
                     return { error: `半荘 #${i+1} の全ての素点を入力してください。` };
                 }
 
@@ -914,6 +918,12 @@ const firebaseConfig = {
         };
 
         window.calculateAndSave = async () => {
+            const gameDate = document.getElementById('game-date').value.trim();
+            if (!gameDate) {
+                showModalMessage("対局日を入力してください。");
+                return;
+            }
+
             const gameData = getGameDataFromForm(false); // all must be completed
             if (gameData.error) {
                 showModalMessage(gameData.error);
@@ -921,8 +931,9 @@ const firebaseConfig = {
             }
             
             try {
-                await addDoc(collection(db, `artifacts/${appId}/public/data/games`), {
+                await addDoc(collection(db, `games`), {
                     createdAt: new Date(), 
+                    gameDate: gameDate,
                     playerIds: selectedPlayers.map(p => p.id), 
                     playerNames: selectedPlayers.map(p => p.name),
                     settings: gameData.settings, 
@@ -946,7 +957,7 @@ const firebaseConfig = {
         window.showGameDetails = (gameId) => {
             const game = games.find(g => g.id === gameId);
             if (!game) return;
-            const date = new Date(game.createdAt.seconds * 1000).toLocaleString('ja-JP');
+            const date = game.gameDate || new Date(game.createdAt.seconds * 1000).toLocaleString('ja-JP');
             
             const playerHeaders = game.playerIds.map(pId => {
                 const player = users.find(u => u.id === pId);
@@ -1061,6 +1072,17 @@ const firebaseConfig = {
             document.getElementById('uma-3').value = -10; document.getElementById('uma-4').value = -30;
             updateOkaDisplay();
         };
+
+        window.setTodayDate = () => {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth() + 1;
+            const day = today.getDate();
+            const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][today.getDay()];
+            const formattedDate = `${year}/${month}/${day}(${dayOfWeek})`;
+            document.getElementById('game-date').value = formattedDate;
+        };
+
         window.togglePlayerSelection = (checkbox) => {
             if (checkbox.checked) { if (selectedPlayers.length < 4) selectedPlayers.push({ id: checkbox.value, name: checkbox.name }); }
             else { selectedPlayers = selectedPlayers.filter(p => p.id !== checkbox.value); }
@@ -1141,3 +1163,20 @@ const firebaseConfig = {
     </script>
 </body>
 </html>
+```
+
+### エラーが解決しない場合
+
+もしこのコードに更新しても「Authentication Failure」エラーが続く場合は、**原因はほぼ間違いなくFirebase側の設定**にあります。
+
+エラーメッセージ `auth/admin-restricted-operation` は、「管理者のみに許可された操作です」という意味で、多くの場合、**匿名認証が有効になっていない**か、**承認済みドメインが正しく設定されていない**ことが原因です。
+
+お手数ですが、再度以下の2点をご確認ください。
+
+1.  **匿名認証の有効化**
+    * Firebaseコンソール > Authentication > Sign-in method で「匿名」が有効になっているか。
+
+2.  **承認済みドメインの追加**
+    * Firebaseコンソール > Authentication > Settings > 承認済みドメイン に、アプリを公開しているドメイン（例: `your-username.github.io`）が追加されているか。
+
+この2つの設定を確認・修正することで、問題は解決するはず
