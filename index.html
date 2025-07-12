@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edogawa M League - Cyber Edition</title>
-    <link rel="shortcut icon" href="https://whispering-longan-7ae.notion.site/image/attachment%3A69bbd160-bff9-46b2-a4db-6b6bcd17ddca%3Afavicon.ico?table=block&id=22e963f3-cf5b-800b-a682-e58a25d127fd&spaceId=6a5b5b21-cf98-4ba8-9055-06ff5ea77222&userId=&cache=v2" type="image/x-icon">
-    <link rel="apple-touch-icon" href="https://whispering-longan-7ae.notion.site/image/attachment%3A05b1d84a-b328-41cd-9f7d-30a9f1fec554%3Afavicon.png?table=block&id=22e963f3-cf5b-804c-9a1f-fe97b4274113&spaceId=6a5b5b21-cf98-4ba8-9055-06ff5ea77222&width=360&userId=&cache=v2" sizes="180x180">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐉</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet">
@@ -110,18 +109,20 @@
         .text-rank-1 { color: var(--accent-green); }
         .text-rank-4 { color: var(--accent-red); }
         .font-m-gothic { font-family: '"MS PGothic", "ＭＳ Ｐゴシック", sans-serif'; }
-        .sticky-col-1 { position: sticky; left: 0; z-index: 1; background-color: var(--primary); }
-        .sticky-col-2 { position: sticky; left: 60px; z-index: 1; background-color: var(--primary); }
+        .sticky-col-1 { position: sticky; left: 0; z-index: 1; }
+        .sticky-col-2 { position: sticky; left: 56px; z-index: 1; } /* 14 * 4px = 56px */
         .leaderboard-table th, .leaderboard-table td { background-color: var(--primary); }
         .leaderboard-table thead th { z-index: 2; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="text-gray-200">
 
     <div id="app" class="container mx-auto p-4 max-w-7xl">
         <header class="cyber-card p-6 mb-6">
-            <h1 class="cyber-header text-4xl font-bold text-center glowing-text text-blue-400">
-                <i class="fa-sharp-duotone fa-solid fa-chart-simple"></i> Edogawa M League
+            <h1 class="cyber-header text-3xl sm:text-4xl font-bold text-center glowing-text text-blue-400">
+                <i class="fa-solid fa-person-rifle"></i> Edogawa M League
             </h1>
             <p id="auth-status" class="text-center text-xs text-gray-500 mt-2">Initializing System...</p>
         </header>
@@ -129,7 +130,7 @@
         <!-- タブナビゲーション -->
         <div class="mb-6">
             <div class="border-b border-gray-700">
-                <nav class="-mb-px flex flex-wrap space-x-6" aria-label="Tabs">
+                <nav class="-mb-px flex space-x-6 overflow-x-auto no-scrollbar" aria-label="Tabs">
                     <button onclick="changeTab('game')" class="tab-btn active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">対局</button>
                     <button onclick="changeTab('leaderboard')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">順位表</button>
                     <button onclick="changeTab('personal-stats')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">個人成績</button>
@@ -232,6 +233,7 @@
             const gamesQuery = query(gamesCollectionRef, orderBy("createdAt", "desc"));
             onSnapshot(gamesQuery, (snapshot) => {
                 games = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderLeaderboardTab(); // Re-render to update year filter
                 updateLeaderboard();
                 renderHistoryList();
                 renderDetailedHistoryTables();
@@ -317,24 +319,35 @@
         
         function renderLeaderboardTab() {
             const container = document.getElementById('leaderboard-tab');
+            const yearOptions = getGameYears().map(year => `<option value="${year}">${year}年</option>`).join('');
+
             container.innerHTML = `
-                <h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">順位表</h2>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="cyber-header text-2xl font-bold text-blue-400">順位表</h2>
+                    <div class="flex items-center gap-2">
+                        <label for="leaderboard-period-select" class="text-sm">期間:</label>
+                        <select id="leaderboard-period-select" onchange="updateLeaderboard()" class="rounded-md p-1">
+                            <option value="all">全期間</option>
+                            ${yearOptions}
+                        </select>
+                    </div>
+                </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-700 leaderboard-table">
-                        <thead class="bg-gray-900 text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        <thead class="bg-gray-900 text-xs md:text-sm font-medium text-gray-400 uppercase tracking-wider">
                             <tr>
-                                <th class="px-4 py-3 text-right sticky-col-1" style="min-width: 60px;">順位</th>
-                                <th class="px-4 py-3 text-left sticky-col-2" style="min-width: 120px;">雀士</th>
-                                <th class="px-4 py-3 text-right">合計Pt</th>
-                                <th class="px-4 py-3 text-right">半荘数</th>
-                                <th class="px-4 py-3 text-right">平均着順</th>
-                                <th class="px-4 py-3 text-right">トップ率</th>
-                                <th class="px-4 py-3 text-right">2着率</th>
-                                <th class="px-4 py-3 text-right">3着率</th>
-                                <th class="px-4 py-3 text-right">ラス率</th>
-                                <th class="px-4 py-3 text-right">連対率</th>
-                                <th class="px-4 py-3 text-right">トビ率</th>
-                                <th class="px-4 py-3 text-right">平均素点</th>
+                                <th class="px-2 md:px-4 py-3 text-right sticky-col-1 w-14 whitespace-nowrap">順位</th>
+                                <th class="px-2 md:px-4 py-3 text-left sticky-col-2 whitespace-nowrap" style="left: 56px;">雀士</th>
+                                <th class="px-2 md:px-4 py-3 text-right whitespace-nowrap">合計Pt</th>
+                                <th class="px-2 md:px-4 py-3 text-right whitespace-nowrap">半荘数</th>
+                                <th class="px-2 md:px-4 py-3 text-right whitespace-nowrap">平均着順</th>
+                                <th class="px-2 md:px-4 py-3 text-right whitespace-nowrap">トップ率</th>
+                                <th class="px-2 md:px-4 py-3 text-right whitespace-nowrap">2着率</th>
+                                <th class="px-2 md:px-4 py-3 text-right whitespace-nowrap">3着率</th>
+                                <th class="px-2 md:px-4 py-3 text-right whitespace-nowrap">ラス率</th>
+                                <th class="px-2 md:px-4 py-3 text-right whitespace-nowrap">連対率</th>
+                                <th class="px-2 md:px-4 py-3 text-right whitespace-nowrap">トビ率</th>
+                                <th class="px-2 md:px-4 py-3 text-right whitespace-nowrap">平均素点</th>
                             </tr>
                         </thead>
                         <tbody id="leaderboard-body" class="divide-y divide-gray-700"></tbody>
@@ -415,9 +428,21 @@
                 `).join('');
         }
         
-        function updateLeaderboard() {
-            const allStats = calculateAllPlayerStats();
+        window.updateLeaderboard = () => {
+            const periodSelect = document.getElementById('leaderboard-period-select');
+            if (!periodSelect) return;
+            const period = periodSelect.value;
+
+            const filteredGames = games.filter(game => {
+                if (period === 'all') return true;
+                const gameDate = game.gameDate || new Date(game.createdAt.seconds * 1000).getFullYear().toString();
+                const gameYear = gameDate.substring(0, 4);
+                return gameYear === period;
+            });
+
+            const allStats = calculateAllPlayerStats(filteredGames);
             const rankedUsers = Object.values(allStats).filter(u => u.totalHanchans > 0);
+            
             if (rankedUsers.length === 0) {
                 const leaderboardBody = document.getElementById('leaderboard-body');
                 if(leaderboardBody) leaderboardBody.innerHTML = `<tr><td colspan="12" class="text-center py-4 text-gray-500">NO DATA</td></tr>`;
@@ -466,19 +491,19 @@
                 };
                 
                 return `
-                    <tr class="hover:bg-gray-800 font-m-gothic">
-                        <td class="px-4 py-4 whitespace-nowrap text-right sticky-col-1">${index + 1}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-left font-medium text-blue-400 cursor-pointer hover:underline sticky-col-2" onclick="showPlayerStats('${user.id}')">${user.name}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-right font-bold ${user.totalPoints >= 0 ? 'text-green-400' : 'text-red-400'}">${(user.totalPoints).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-right">${user.totalHanchans.toLocaleString()}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-right ${getClass('avgRank', user.avgRank)}">${user.avgRank.toFixed(2)}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-right ${getClass('topRate', user.topRate)}">${user.topRate.toFixed(2)}%</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-right ${getClass('secondRate', user.secondRate)}">${user.secondRate.toFixed(2)}%</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-right ${getClass('thirdRate', user.thirdRate)}">${user.thirdRate.toFixed(2)}%</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-right ${getClass('lastRate', user.lastRate)}">${user.lastRate.toFixed(2)}%</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-right ${getClass('rentaiRate', user.rentaiRate)}">${user.rentaiRate.toFixed(2)}%</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-right ${getClass('bustedRate', user.bustedRate)}">${user.bustedRate.toFixed(2)}%</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-right ${getClass('avgRawScore', user.avgRawScore)}">${user.avgRawScore.toLocaleString()}</td>
+                    <tr class="hover:bg-gray-800 font-m-gothic text-xs md:text-sm">
+                        <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right sticky-col-1 w-14">${index + 1}</td>
+                        <td class="px-2 md:px-4 py-4 whitespace-nowrap text-left font-medium text-blue-400 cursor-pointer hover:underline sticky-col-2" style="left: 56px;" onclick="showPlayerStats('${user.id}')">${user.name}</td>
+                        <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right font-bold ${user.totalPoints >= 0 ? 'text-green-400' : 'text-red-400'}">${(user.totalPoints).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</td>
+                        <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right">${user.totalHanchans.toLocaleString()}</td>
+                        <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('avgRank', user.avgRank)}">${user.avgRank.toFixed(2)}</td>
+                        <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('topRate', user.topRate)}">${user.topRate.toFixed(2)}%</td>
+                        <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('secondRate', user.secondRate)}">${user.secondRate.toFixed(2)}%</td>
+                        <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('thirdRate', user.thirdRate)}">${user.thirdRate.toFixed(2)}%</td>
+                        <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('lastRate', user.lastRate)}">${user.lastRate.toFixed(2)}%</td>
+                        <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('rentaiRate', user.rentaiRate)}">${user.rentaiRate.toFixed(2)}%</td>
+                        <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('bustedRate', user.bustedRate)}">${user.bustedRate.toFixed(2)}%</td>
+                        <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('avgRawScore', user.avgRawScore)}">${user.avgRawScore.toLocaleString()}</td>
                     </tr>
                 `;
             }).join('');
@@ -515,6 +540,10 @@
         }
 
         function renderDetailedHistoryTables() {
+            const rawListContainer = document.getElementById('history-raw-list');
+            const ptListContainer = document.getElementById('history-pt-list');
+            if (!rawListContainer || !ptListContainer) return;
+
             const allHanchans = [];
             games.forEach(game => {
                 game.scores.forEach((hanchan, index) => {
@@ -530,11 +559,11 @@
             });
 
             const createTable = (dataType) => {
-                let tableHtml = `<table class="min-w-full divide-y divide-gray-700 font-m-gothic">
-                    <thead class="bg-gray-900 text-xs font-medium text-gray-400 uppercase tracking-wider">
+                let tableHtml = `<table class="min-w-full divide-y divide-gray-700 font-m-gothic text-xs md:text-sm">
+                    <thead class="bg-gray-900 text-xs md:text-sm font-medium text-gray-400 uppercase tracking-wider">
                         <tr>
-                            <th class="px-4 py-3 text-left">日時</th>
-                            ${users.map(u => `<th class="px-4 py-3 text-right">${u.name}</th>`).join('')}
+                            <th class="px-2 md:px-4 py-3 text-left whitespace-nowrap">日時</th>
+                            ${users.map(u => `<th class="px-2 md:px-4 py-3 text-right whitespace-nowrap">${u.name}</th>`).join('')}
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-700">`;
@@ -556,16 +585,16 @@
                         rankCursor += playersInGroup.length;
                     });
                     
-                    tableHtml += `<tr><td class="px-4 py-2 whitespace-nowrap">${hanchan.date} (#${hanchan.hanchanNum})</td>`;
+                    tableHtml += `<tr><td class="px-2 md:px-4 py-2 whitespace-nowrap">${hanchan.date} (#${hanchan.hanchanNum})</td>`;
                     users.forEach(user => {
                         if (scores[user.id] !== undefined) {
                             const rank = ranks[user.id];
                             let rankClass = '';
                             if (rank === 1) rankClass = 'text-rank-1';
                             if (rank === 4) rankClass = 'text-rank-4';
-                            tableHtml += `<td class="px-4 py-2 text-right ${rankClass}">${dataType === 'points' ? scores[user.id].toFixed(1) : scores[user.id].toLocaleString()}</td>`;
+                            tableHtml += `<td class="px-2 md:px-4 py-2 text-right ${rankClass}">${dataType === 'points' ? scores[user.id].toFixed(1) : scores[user.id].toLocaleString()}</td>`;
                         } else {
-                            tableHtml += `<td class="px-4 py-2 text-right text-gray-600">-</td>`;
+                            tableHtml += `<td class="px-2 md:px-4 py-2 text-right text-gray-600">-</td>`;
                         }
                     });
                     tableHtml += `</tr>`;
@@ -575,8 +604,8 @@
                 return tableHtml;
             };
             
-            document.getElementById('history-raw-list').innerHTML = createTable('rawScores');
-            document.getElementById('history-pt-list').innerHTML = createTable('points');
+            rawListContainer.innerHTML = createTable('rawScores');
+            ptListContainer.innerHTML = createTable('points');
         }
 
         // --- Stats Page ---
@@ -634,7 +663,7 @@
         function renderDetailedStats(playerId) {
             const container = document.getElementById('detailed-stats-container');
             if (!container) return;
-            const allStats = calculateAllPlayerStats();
+            const allStats = calculateAllPlayerStats(games);
             const playerStats = allStats[playerId];
             if (!playerStats) return;
             
@@ -655,7 +684,7 @@
         }
 
         function renderStatsCharts(mainPlayerId, comparisonIds) {
-            const allStats = calculateAllPlayerStats();
+            const allStats = calculateAllPlayerStats(games);
             const colors = ['#58a6ff', '#52c569', '#f5655f', '#f2cc8f', '#e0aaff', '#9bf6ff'];
             
             const pointHistoryDatasets = [];
@@ -707,13 +736,30 @@
             });
         }
         
-        function calculateAllPlayerStats() {
+        function getGameYears() {
+            const years = new Set();
+            games.forEach(game => {
+                const dateStr = game.gameDate;
+                if (dateStr) {
+                    const year = dateStr.substring(0, 4);
+                    if (!isNaN(year)) {
+                        years.add(year);
+                    }
+                } else if (game.createdAt && game.createdAt.seconds) {
+                    const year = new Date(game.createdAt.seconds * 1000).getFullYear().toString();
+                    years.add(year);
+                }
+            });
+            return Array.from(years).sort((a, b) => b - a);
+        }
+
+        function calculateAllPlayerStats(gamesToCalculate) {
             const stats = {};
             users.forEach(u => {
                 stats[u.id] = { id: u.id, name: u.name, totalPoints: 0, gameCount: 0, ranks: [0, 0, 0, 0], bustedCount: 0, totalRawScore: 0, totalHanchans: 0 };
             });
 
-            const sortedGames = [...games].sort((a, b) => a.createdAt.seconds - b.createdAt.seconds);
+            const sortedGames = [...gamesToCalculate].sort((a, b) => a.createdAt.seconds - b.createdAt.seconds);
 
             sortedGames.forEach(game => {
                 game.playerIds.forEach(pId => { if (stats[pId]) stats[pId].gameCount++; });
@@ -806,6 +852,28 @@
             } catch (error) { console.error("Error deleting user:", error); showModalMessage("削除に失敗しました。"); }
         };
         
+        window.confirmDeleteGame = (gameId, date) => {
+            showModal(`
+                <h3 class="cyber-header text-xl font-bold text-red-400 mb-4">対局履歴 削除確認</h3>
+                <p>${date} の対局データを削除しますか？<br>この操作は元に戻せません。</p>
+                <div class="flex justify-end gap-4 mt-6">
+                    <button onclick="closeModal()" class="cyber-btn px-4 py-2 rounded-lg">キャンセル</button>
+                    <button onclick="executeDeleteGame('${gameId}')" class="cyber-btn cyber-btn-red px-4 py-2 rounded-lg">削除実行</button>
+                </div>
+            `);
+        };
+
+        window.executeDeleteGame = async (gameId) => {
+            closeModal();
+            try {
+                await deleteDoc(doc(db, "games", gameId));
+                showModalMessage("対局データを削除しました。");
+            } catch (error) {
+                console.error("Error deleting game: ", error);
+                showModalMessage("対局データの削除に失敗しました。");
+            }
+        };
+
         function getGameDataFromForm(onlyCompleted) {
             const basePoint = Number(document.getElementById('base-point').value);
             const returnPoint = Number(document.getElementById('return-point').value);
@@ -1102,7 +1170,7 @@
             const tr = document.createElement('tr');
             tr.id = `round-${roundNum}`;
             tr.className = 'border-b border-gray-700';
-            tr.innerHTML = `<td class="p-2 font-semibold">#${roundNum}</td>${selectedPlayers.map(p => `<td class="p-2"><input type="text" inputmode="numeric" class="score-input w-full rounded-md sm:text-sm" data-player-id="${p.id}" oninput="this.value = this.value.replace(/[^\\d-]/g, '')" onchange="updateRoundTotal(${roundNum})"></td>`).join('')}<td class="p-2 font-semibold" id="total-${roundNum}">0</td><td class="p-2 text-center"><button onclick="deleteHanchan('round-${roundNum}')" class="text-red-400 hover:text-red-600"><i class="fas fa-times-circle"></i></button></td>`;
+            tr.innerHTML = `<td class="p-2 font-semibold">#${roundNum}</td>${selectedPlayers.map(p => `<td class="p-2"><input type="text" inputmode="numeric" class="score-input w-full rounded-md sm:text-sm" data-player-id="${p.id}" onchange="updateRoundTotal(${roundNum})"></td>`).join('')}<td class="p-2 font-semibold" id="total-${roundNum}">0</td><td class="p-2 text-center"><button onclick="deleteHanchan('round-${roundNum}')" class="text-red-400 hover:text-red-600"><i class="fas fa-times-circle"></i></button></td>`;
             body.appendChild(tr);
             tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
         };
