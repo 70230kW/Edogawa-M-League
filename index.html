@@ -134,6 +134,7 @@
                 <nav class="-mb-px flex space-x-6 overflow-x-auto no-scrollbar" aria-label="Tabs">
                     <button onclick="changeTab('game')" class="tab-btn active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">対局</button>
                     <button onclick="changeTab('leaderboard')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">順位表</button>
+                    <button onclick="changeTab('data-analysis')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">データ分析（開発中）</button>
                     <button onclick="changeTab('personal-stats')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">個人成績</button>
                     <button onclick="changeTab('history')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">対局履歴</button>
                     <button onclick="changeTab('history-raw')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">詳細履歴(素点)</button>
@@ -147,6 +148,7 @@
         <main id="main-content">
             <div id="game-tab" class="space-y-6"></div>
             <div id="leaderboard-tab" class="hidden cyber-card p-6"></div>
+            <div id="data-analysis-tab" class="hidden"></div>
             <div id="personal-stats-tab" class="hidden cyber-card p-6"></div>
             <div id="history-tab" class="hidden cyber-card p-6"></div>
             <div id="history-raw-tab" class="hidden cyber-card p-6"></div>
@@ -174,6 +176,9 @@
         let selectedPlayers = []; // {id, name}
         let rankChart = null;
         let pointHistoryChart = null;
+        let leagueRankPieChart = null;
+        let topPlayersPointChart = null;
+        let scoreRankScatterChart = null;
         
         // --- Firebase Config ---
         const firebaseConfig = {
@@ -185,6 +190,87 @@
             appId: "1:587593171009:web:b48dd5b809f2d2ce8886c0",
             measurementId: "G-XMYXPG06QF"
         };
+        
+        // --- Helper/Calculation Functions ---
+        function getGameYears() {
+            const years = new Set();
+            games.forEach(game => {
+                const dateStr = game.gameDate;
+                if (dateStr) {
+                    const year = dateStr.substring(0, 4);
+                    if (!isNaN(year)) {
+                        years.add(year);
+                    }
+                } else if (game.createdAt && game.createdAt.seconds) {
+                    const year = new Date(game.createdAt.seconds * 1000).getFullYear().toString();
+                    years.add(year);
+                }
+            });
+            return Array.from(years).sort((a, b) => b - a);
+        }
+
+        function calculateAllPlayerStats(gamesToCalculate) {
+            const stats = {};
+            users.forEach(u => {
+                stats[u.id] = { id: u.id, name: u.name, totalPoints: 0, gameCount: 0, ranks: [0, 0, 0, 0], bustedCount: 0, totalRawScore: 0, totalHanchans: 0 };
+            });
+
+            const sortedGames = [...gamesToCalculate].sort((a, b) => a.createdAt.seconds - b.createdAt.seconds);
+
+            sortedGames.forEach(game => {
+                game.playerIds.forEach(pId => { if (stats[pId]) stats[pId].gameCount++; });
+                Object.entries(game.totalPoints).forEach(([playerId, point]) => { if (stats[playerId]) stats[playerId].totalPoints += point; });
+
+                game.scores.forEach(hanchan => {
+                    Object.entries(hanchan.rawScores).forEach(([playerId, rawScore]) => {
+                        if (stats[playerId]) {
+                            stats[playerId].totalRawScore += rawScore;
+                            if (rawScore < 0) stats[playerId].bustedCount++;
+                        }
+                    });
+                    
+                    const scoreGroups = {};
+                    Object.entries(hanchan.rawScores).forEach(([pId, score]) => {
+                        if (!scoreGroups[score]) scoreGroups[score] = [];
+                        scoreGroups[score].push(pId);
+                    });
+                    const sortedScores = Object.keys(scoreGroups).map(Number).sort((a, b) => b - a);
+                    
+                    let rankCursor = 0;
+                    sortedScores.forEach(score => {
+                        const playersInGroup = scoreGroups[score];
+                        playersInGroup.forEach(pId => {
+                            if (stats[pId]) {
+                                stats[pId].ranks[rankCursor]++;
+                            }
+                        });
+                        rankCursor += playersInGroup.length;
+                    });
+
+                    Object.keys(hanchan.rawScores).forEach(pId => {
+                        if(stats[pId]) stats[pId].totalHanchans++;
+                    });
+                });
+            });
+            return stats;
+        }
+
+        function getPlayerPointHistory(playerId) {
+            let cumulativePoints = 0;
+            const history = [];
+            const playerGames = [...games]
+                .filter(g => g.playerIds.includes(playerId))
+                .sort((a, b) => a.createdAt.seconds - b.createdAt.seconds);
+
+            playerGames.forEach((game, index) => {
+                cumulativePoints += game.totalPoints[playerId];
+                history.push({ 
+                    date: game.gameDate || new Date(game.createdAt.seconds * 1000).toLocaleDateString('ja-JP'),
+                    points: cumulativePoints 
+                });
+            });
+            return history;
+        }
 
         // --- Initialization ---
         function initializeAppAndAuth() {
@@ -209,6 +295,7 @@
             
             renderGameTab();
             renderLeaderboardTab();
+            renderDataAnalysisTab();
             renderPersonalStatsTab();
             renderUserManagementTab();
             renderDetailedHistoryTabContainers();
@@ -234,10 +321,11 @@
             const gamesQuery = query(gamesCollectionRef, orderBy("createdAt", "desc"));
             onSnapshot(gamesQuery, (snapshot) => {
                 games = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderLeaderboardTab(); // Re-render to update year filter
+                renderLeaderboardTab(); 
                 updateLeaderboard();
                 renderHistoryList();
                 renderDetailedHistoryTables();
+                updateDataAnalysisCharts();
                 const statsTab = document.getElementById('personal-stats-tab');
                 const playerId = statsTab.querySelector('#personal-stats-player-select')?.value;
                 if (playerId) {
@@ -248,7 +336,7 @@
         
         // --- Tab & Content Rendering ---
         window.changeTab = (tabName) => {
-            ['game', 'leaderboard', 'personal-stats', 'history', 'history-raw', 'history-pt', 'users'].forEach(tab => {
+            ['game', 'leaderboard', 'data-analysis', 'personal-stats', 'history', 'history-raw', 'history-pt', 'users'].forEach(tab => {
                 document.getElementById(`${tab}-tab`).classList.add('hidden');
                 const btn = document.querySelector(`.tab-btn[onclick="changeTab('${tab}')"]`);
                 if(btn) btn.classList.remove('active');
@@ -256,6 +344,10 @@
             document.getElementById(`${tabName}-tab`).classList.remove('hidden');
             const btn = document.querySelector(`.tab-btn[onclick="changeTab('${tabName}')"]`);
             if(btn) btn.classList.add('active');
+
+            if (tabName === 'data-analysis') {
+                updateDataAnalysisCharts();
+            }
         };
 
         function renderGameTab() {
@@ -397,6 +489,29 @@
             const ptContainer = document.getElementById('history-pt-tab');
             rawContainer.innerHTML = `<h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">詳細履歴 (素点)</h2><div id="history-raw-list" class="overflow-x-auto"></div>`;
             ptContainer.innerHTML = `<h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">詳細履歴 (PT)</h2><div id="history-pt-list" class="overflow-x-auto"></div>`;
+        }
+        
+        function renderDataAnalysisTab() {
+            const container = document.getElementById('data-analysis-tab');
+            container.innerHTML = `
+                <div class="space-y-6">
+                    <h2 class="cyber-header text-2xl font-bold text-blue-400 border-b border-gray-700 pb-2">データ分析</h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="cyber-card p-6">
+                            <h3 class="cyber-header text-xl font-bold mb-4 text-center">雀士別1着割合</h3>
+                            <div class="w-full h-64 mx-auto"><canvas id="league-rank-pie-chart"></canvas></div>
+                        </div>
+                        <div class="cyber-card p-6">
+                            <h3 class="cyber-header text-xl font-bold mb-4 text-center">トップ雀士 ポイント推移</h3>
+                            <div class="w-full h-64 mx-auto"><canvas id="top-players-point-chart"></canvas></div>
+                        </div>
+                        <div class="cyber-card p-6 lg:col-span-2">
+                            <h3 class="cyber-header text-xl font-bold mb-4 text-center">平均素点 vs 平均着順</h3>
+                            <div class="w-full h-80 mx-auto"><canvas id="score-rank-scatter-chart"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         // --- Component Rendering ---
@@ -575,7 +690,15 @@
                     </thead>
                     <tbody class="divide-y divide-gray-700">`;
                 
+                let lastDate = null;
                 allHanchans.forEach(hanchan => {
+                    const currentDate = hanchan.date.split('(')[0];
+                    let borderClass = '';
+                    if (lastDate && currentDate !== lastDate) {
+                        borderClass = 'border-t-2 border-gray-500';
+                    }
+                    lastDate = currentDate;
+
                     const scores = hanchan[dataType];
                     const scoreGroups = {};
                     Object.entries(hanchan.rawScores).forEach(([pId, score]) => {
@@ -592,7 +715,7 @@
                         rankCursor += playersInGroup.length;
                     });
                     
-                    tableHtml += `<tr><td class="px-2 md:px-4 py-2 whitespace-nowrap">${hanchan.date} (#${hanchan.hanchanNum})</td>`;
+                    tableHtml += `<tr class="${borderClass}"><td class="px-2 md:px-4 py-2 whitespace-nowrap">${hanchan.date} (#${hanchan.hanchanNum})</td>`;
                     users.forEach(user => {
                         if (scores[user.id] !== undefined) {
                             const rank = ranks[user.id];
@@ -655,10 +778,12 @@
                         <div class="w-full h-64 mx-auto"><canvas id="point-history-chart"></canvas></div>
                     </div>
                 </div>
+                <div id="player-history-container" class="cyber-card p-6"></div>
             `;
             
             renderDetailedStats(playerId);
             renderStatsCharts(playerId, []);
+            renderPlayerHistoryTable(playerId);
         }
         
         window.updateComparisonCharts = (mainPlayerId) => {
@@ -688,6 +813,69 @@
                     </div>
                 </div>
             `;
+        }
+        
+        function renderPlayerHistoryTable(playerId) {
+            const container = document.getElementById('player-history-container');
+            if (!container) return;
+            
+            const playerHanchans = [];
+            games.forEach(game => {
+                if (game.playerIds.includes(playerId)) {
+                    game.scores.forEach((hanchan, index) => {
+                        const scoreGroups = {};
+                        Object.entries(hanchan.rawScores).forEach(([pId, score]) => {
+                            if (!scoreGroups[score]) scoreGroups[score] = [];
+                            scoreGroups[score].push(pId);
+                        });
+                        const sortedScores = Object.keys(scoreGroups).map(Number).sort((a, b) => b - a);
+                        
+                        const ranks = {};
+                        let rankCursor = 1;
+                        sortedScores.forEach(score => {
+                            const playersInGroup = scoreGroups[score];
+                            playersInGroup.forEach(pId => {
+                                ranks[pId] = rankCursor;
+                            });
+                            rankCursor += playersInGroup.length;
+                        });
+
+                        playerHanchans.push({
+                            date: game.gameDate || new Date(game.createdAt.seconds * 1000).toLocaleString('ja-JP'),
+                            rawScore: hanchan.rawScores[playerId],
+                            point: hanchan.points[playerId],
+                            rank: ranks[playerId]
+                        });
+                    });
+                }
+            });
+
+            if (playerHanchans.length === 0) {
+                container.innerHTML = `<h3 class="cyber-header text-xl font-bold mb-4 text-center">対局履歴</h3><p class="text-gray-500 text-center">まだ対局記録がありません。</p>`;
+                return;
+            }
+
+            let tableHtml = `<h3 class="cyber-header text-xl font-bold mb-4 text-center">対局履歴</h3>
+                <table class="min-w-full divide-y divide-gray-700 text-sm">
+                    <thead class="bg-gray-900"><tr>
+                        <th class="px-4 py-2 text-left">日時</th>
+                        <th class="px-4 py-2 text-right">着順</th>
+                        <th class="px-4 py-2 text-right">素点</th>
+                        <th class="px-4 py-2 text-right">ポイント</th>
+                    </tr></thead>
+                    <tbody class="divide-y divide-gray-700">`;
+            
+            playerHanchans.reverse().forEach(h => {
+                tableHtml += `<tr>
+                    <td class="px-4 py-2">${h.date}</td>
+                    <td class="px-4 py-2 text-right">${h.rank}</td>
+                    <td class="px-4 py-2 text-right">${h.rawScore.toLocaleString()}</td>
+                    <td class="px-4 py-2 text-right ${h.point >= 0 ? 'text-green-400' : 'text-red-400'}">${h.point.toFixed(1)}</td>
+                </tr>`;
+            });
+
+            tableHtml += `</tbody></table>`;
+            container.innerHTML = tableHtml;
         }
 
         function renderStatsCharts(mainPlayerId, comparisonIds) {
@@ -743,81 +931,131 @@
             });
         }
         
-        function getGameYears() {
-            const years = new Set();
-            games.forEach(game => {
-                const dateStr = game.gameDate;
-                if (dateStr) {
-                    const year = dateStr.substring(0, 4);
-                    if (!isNaN(year)) {
-                        years.add(year);
+        function updateDataAnalysisCharts() {
+            if (!document.getElementById('data-analysis-tab') || document.getElementById('data-analysis-tab').classList.contains('hidden')) {
+                return;
+            }
+
+            const allStats = calculateAllPlayerStats(games);
+            const rankedUsers = Object.values(allStats).filter(u => u.totalHanchans > 0).sort((a,b) => b.totalPoints - a.totalPoints);
+            const colors = ['#58a6ff', '#52c569', '#f5655f', '#f2cc8f', '#e0aaff', '#9bf6ff'];
+
+            // League Rank Pie Chart
+            const firstPlaceStats = rankedUsers.filter(u => u.ranks[0] > 0);
+            if (leagueRankPieChart) leagueRankPieChart.destroy();
+            leagueRankPieChart = new Chart(document.getElementById('league-rank-pie-chart').getContext('2d'), {
+                type: 'pie',
+                data: {
+                    labels: firstPlaceStats.map(u => u.name),
+                    datasets: [{
+                        data: firstPlaceStats.map(u => u.ranks[0]),
+                        backgroundColor: firstPlaceStats.map((_, index) => colors[index % colors.length]),
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { color: '#c9d1d9' } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const value = context.raw;
+                                    const percentage = total > 0 ? (value / total * 100).toFixed(1) + '%' : '0%';
+                                    return `${label}${value}回 (${percentage})`;
+                                }
+                            }
+                        }
                     }
-                } else if (game.createdAt && game.createdAt.seconds) {
-                    const year = new Date(game.createdAt.seconds * 1000).getFullYear().toString();
-                    years.add(year);
                 }
             });
-            return Array.from(years).sort((a, b) => b - a);
-        }
 
-        function calculateAllPlayerStats(gamesToCalculate) {
-            const stats = {};
-            users.forEach(u => {
-                stats[u.id] = { id: u.id, name: u.name, totalPoints: 0, gameCount: 0, ranks: [0, 0, 0, 0], bustedCount: 0, totalRawScore: 0, totalHanchans: 0 };
-            });
-
-            const sortedGames = [...gamesToCalculate].sort((a, b) => a.createdAt.seconds - b.createdAt.seconds);
-
-            sortedGames.forEach(game => {
-                game.playerIds.forEach(pId => { if (stats[pId]) stats[pId].gameCount++; });
-                Object.entries(game.totalPoints).forEach(([playerId, point]) => { if (stats[playerId]) stats[playerId].totalPoints += point; });
-
-                game.scores.forEach(hanchan => {
-                    Object.entries(hanchan.rawScores).forEach(([playerId, rawScore]) => {
-                        if (stats[playerId]) {
-                            stats[playerId].totalRawScore += rawScore;
-                            if (rawScore < 0) stats[playerId].bustedCount++;
-                        }
-                    });
-                    
-                    const scoreGroups = {};
-                    Object.entries(hanchan.rawScores).forEach(([pId, score]) => {
-                        if (!scoreGroups[score]) scoreGroups[score] = [];
-                        scoreGroups[score].push(pId);
-                    });
-                    const sortedScores = Object.keys(scoreGroups).map(Number).sort((a, b) => b - a);
-                    
-                    let rankCursor = 0;
-                    sortedScores.forEach(score => {
-                        const playersInGroup = scoreGroups[score];
-                        playersInGroup.forEach(pId => {
-                            if (stats[pId]) {
-                                stats[pId].ranks[rankCursor]++;
-                            }
-                        });
-                        rankCursor += playersInGroup.length;
-                    });
-
-                    Object.keys(hanchan.rawScores).forEach(pId => {
-                        if(stats[pId]) stats[pId].totalHanchans++;
-                    });
+            // Top Players Point History
+            const top5Players = rankedUsers.slice(0, 5);
+            const allDates = [...new Set(games.map(g => g.gameDate || new Date(g.createdAt.seconds * 1000).toLocaleDateString('ja-JP')))].sort();
+            const topPlayersDatasets = top5Players.map((player, index) => {
+                const history = getPlayerPointHistory(player.id);
+                const data = [];
+                let lastPoint = 0;
+                let historyIndex = 0;
+                allDates.forEach(date => {
+                    while(history[historyIndex] && new Date(history[historyIndex].date) <= new Date(date)) {
+                        lastPoint = history[historyIndex].points;
+                        historyIndex++;
+                    }
+                    data.push(lastPoint);
                 });
-            });
-            return stats;
-        }
 
-        function getPlayerPointHistory(playerId) {
-            let cumulativePoints = 0;
-            const history = [{ gameNum: 0, cumulativePoints: 0 }];
-            const playerGames = [...games]
-                .filter(g => g.playerIds.includes(playerId))
-                .sort((a, b) => a.createdAt.seconds - b.createdAt.seconds);
-
-            playerGames.forEach((game, index) => {
-                cumulativePoints += game.totalPoints[playerId];
-                history.push({ gameNum: index + 1, cumulativePoints: cumulativePoints });
+                return {
+                    label: player.name,
+                    data: data,
+                    borderColor: colors[index % colors.length],
+                    fill: false,
+                    tension: 0.1
+                }
             });
-            return history;
+            if (topPlayersPointChart) topPlayersPointChart.destroy();
+            topPlayersPointChart = new Chart(document.getElementById('top-players-point-chart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: allDates,
+                    datasets: topPlayersDatasets
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#c9d1d9' }}}, scales: { x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } }, y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } } } }
+            });
+
+            // Score vs Rank Scatter Chart
+            const scatterData = rankedUsers.map((user, index) => ({
+                x: user.avgRank,
+                y: user.avgRawScore,
+                label: user.name,
+                backgroundColor: colors[index % colors.length]
+            }));
+            if (scoreRankScatterChart) scoreRankScatterChart.destroy();
+            scoreRankScatterChart = new Chart(document.getElementById('score-rank-scatter-chart').getContext('2d'), {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: '雀士スタイル',
+                        data: scatterData,
+                        backgroundColor: scatterData.map(d => d.backgroundColor)
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.raw.label + ` (着順: ${context.raw.x.toFixed(2)}, 素点: ${context.raw.y.toLocaleString()})`;
+                                }
+                            }
+                        },
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { 
+                            title: { display: true, text: '平均着順', color: '#c9d1d9' }, 
+                            ticks: { color: '#8b949e' }, 
+                            grid: { color: '#30363d' },
+                            min: 1.00,
+                            max: 4.00
+                        },
+                        y: { 
+                            title: { display: true, text: '平均素点', color: '#c9d1d9' }, 
+                            ticks: { color: '#8b949e' }, 
+                            grid: { color: '#30363d' },
+                            min: -20000,
+                            max: 40000
+                        }
+                    }
+                }
+            });
         }
 
         window.addUser = async () => {
@@ -1039,6 +1277,34 @@
                 const player = users.find(u => u.id === pId);
                 return `<th class="px-2 py-2 text-right">${player ? player.name : 'N/A'}</th>`;
             }).join('');
+            
+            const ranksBody = game.scores.map((hanchan, index) => {
+                const scoreGroups = {};
+                Object.entries(hanchan.rawScores).forEach(([pId, score]) => {
+                    if (!scoreGroups[score]) scoreGroups[score] = [];
+                    scoreGroups[score].push(pId);
+                });
+                const sortedScores = Object.keys(scoreGroups).map(Number).sort((a, b) => b - a);
+                
+                const ranks = {};
+                let rankCursor = 1;
+                sortedScores.forEach(score => {
+                    const playersInGroup = scoreGroups[score];
+                    playersInGroup.forEach(pId => {
+                        ranks[pId] = rankCursor;
+                    });
+                    rankCursor += playersInGroup.length;
+                });
+
+                const rankCells = game.playerIds.map(pId => {
+                    const rank = ranks[pId];
+                    let rankClass = '';
+                    if (rank === 1) rankClass = 'text-rank-1';
+                    if (rank === 4) rankClass = 'text-rank-4';
+                    return `<td class="px-2 py-2 text-right font-m-gothic ${rankClass}">${rank}</td>`;
+                }).join('');
+                return `<tr><td class="px-2 py-2 text-center font-bold">#${index + 1}</td>${rankCells}</tr>`;
+            }).join('');
 
             const createTableBody = (dataType) => {
                 return game.scores.map((hanchan, index) => {
@@ -1079,6 +1345,10 @@
             let detailsHtml = `
                 <h3 class="cyber-header text-xl font-bold text-blue-400 mb-2">${date}</h3>
                 <div class="space-y-6">
+                    <div>
+                        <h4 class="font-bold mb-2">着順</h4>
+                        <table class="min-w-full text-sm"><thead><tr><th class="px-2 py-2 text-center">#</th>${playerHeaders}</tr></thead><tbody class="divide-y divide-gray-700">${ranksBody}</tbody></table>
+                    </div>
                     <div>
                         <h4 class="font-bold mb-2">ポイント</h4>
                         <table class="min-w-full text-sm"><thead><tr><th class="px-2 py-2 text-center">#</th>${playerHeaders}</tr></thead><tbody class="divide-y divide-gray-700">${pointsBody}</tbody></table>
