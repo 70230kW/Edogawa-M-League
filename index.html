@@ -179,14 +179,15 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, addDoc, getDocs, onSnapshot, deleteDoc, query, where, writeBatch, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, addDoc, getDocs, onSnapshot, deleteDoc, query, where, writeBatch, orderBy, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
         // --- App State ---
-        let db, auth;
+        let db, auth, storage;
         let currentUser = null;
         let users = [];
         let games = [];
-        let selectedPlayers = []; // {id, name}
+        let selectedPlayers = []; // {id, name, photoURL}
         let hanchanScores = [];   // Holds scores for each hanchan
         let activeInputId = null; // Holds the ID of the active score input in the modal
         let rankChart = null;
@@ -199,7 +200,7 @@
             apiKey: "AIzaSyBwWqWxRy5JlcQwbc5KAXRvH0swd0pOzSg",
             authDomain: "edogawa-m-league-summary.firebaseapp.com",
             projectId: "edogawa-m-league-summary",
-            storageBucket: "edogawa-m-league-summary.firebasestorage.app",
+            storageBucket: "edogawa-m-league-summary.appspot.com",
             messagingSenderId: "587593171009",
             appId: "1:587593171009:web:b48dd5b809f2d2ce8886c0",
             measurementId: "G-XMYXPG06QF"
@@ -226,7 +227,7 @@
         function calculateAllPlayerStats(gamesToCalculate) {
             const stats = {};
             users.forEach(u => {
-                stats[u.id] = { id: u.id, name: u.name, totalPoints: 0, gameCount: 0, ranks: [0, 0, 0, 0], bustedCount: 0, totalRawScore: 0, totalHanchans: 0 };
+                stats[u.id] = { id: u.id, name: u.name, photoURL: u.photoURL, totalPoints: 0, gameCount: 0, ranks: [0, 0, 0, 0], bustedCount: 0, totalRawScore: 0, totalHanchans: 0 };
             });
 
             const sortedGames = [...gamesToCalculate].sort((a, b) => a.createdAt.seconds - b.createdAt.seconds);
@@ -291,6 +292,7 @@
             const app = initializeApp(firebaseConfig);
             auth = getAuth(app);
             db = getFirestore(app);
+            storage = getStorage(app);
 
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
@@ -323,12 +325,22 @@
                 users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 users.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
 
+                // Update selectedPlayers array with fresh user data
+                selectedPlayers = selectedPlayers.map(sp => {
+                    const updatedUser = users.find(u => u.id === sp.id);
+                    return updatedUser ? { id: updatedUser.id, name: updatedUser.name, photoURL: updatedUser.photoURL } : sp;
+                });
+
                 if (document.getElementById('step2-rule-settings')?.classList.contains('hidden')) {
                     renderPlayerSelection();
                 }
                 updateLeaderboard();
                 renderUserManagementList();
                 renderPersonalStatsTab();
+                // Re-render score display if it's visible to show updated names/photos
+                if(!document.getElementById('step3-score-input').classList.contains('hidden')) {
+                    renderScoreDisplay();
+                }
             });
 
             const gamesCollectionRef = collection(db, `games`);
@@ -348,7 +360,20 @@
             });
         }
         
-        // --- Tab & Content Rendering ---
+        // --- UI Rendering ---
+
+        function getPlayerPhotoHtml(playerId, sizeClass = 'w-12 h-12') {
+            const user = users.find(u => u.id === playerId);
+            const fontSize = parseInt(sizeClass.match(/w-(\d+)/)[1]) / 2.5;
+            if (user && user.photoURL) {
+                return `<img src="${user.photoURL}" class="${sizeClass} rounded-full object-cover bg-gray-800" alt="${user.name}" onerror="this.onerror=null;this.src='https://placehold.co/100x100/010409/8b949e?text=?';">`;
+            }
+            // Placeholder
+            return `<div class="${sizeClass} rounded-full bg-gray-700 flex items-center justify-center">
+                        <i class="fas fa-user text-gray-500" style="font-size: ${fontSize}px;"></i>
+                    </div>`;
+        }
+        
         window.changeTab = (tabName) => {
             ['game', 'leaderboard', 'data-analysis', 'personal-stats', 'history', 'history-raw', 'history-pt', 'users'].forEach(tab => {
                 document.getElementById(`${tab}-tab`).classList.add('hidden');
@@ -544,10 +569,14 @@
             users.forEach(user => {
                 const isSelected = selectedPlayers.some(p => p.id === user.id);
                 const isDisabled = !isSelected && selectedPlayers.length >= 4;
+                const photoHtml = getPlayerPhotoHtml(user.id, 'w-16 h-16');
                 const div = document.createElement('div');
                 div.innerHTML = `
                     <input type="checkbox" id="player-${user.id}" class="player-checkbox hidden" value="${user.id}" name="${user.name}" onchange="togglePlayerSelection(this)" ${isSelected ? 'checked' : ''} ${isDisabled ? 'disabled' : ''}>
-                    <label for="player-${user.id}" class="block text-center border-2 border-gray-600 rounded-lg p-3 cursor-pointer transition-colors duration-200 hover:border-blue-500">${user.name}</label>
+                    <label for="player-${user.id}" class="block text-center border-2 border-gray-600 rounded-lg p-3 cursor-pointer transition-colors duration-200 hover:border-blue-500">
+                        <div class="w-16 h-16 mx-auto mb-2">${photoHtml}</div>
+                        <span>${user.name}</span>
+                    </label>
                 `;
                 container.appendChild(div);
             });
@@ -558,12 +587,25 @@
             if (!container) return;
             container.innerHTML = users.length === 0 
                 ? `<p class="text-gray-500">登録されている雀士がいません。</p>`
-                : users.map(user => `
-                    <div class="flex justify-between items-center bg-gray-900 p-3 rounded-lg">
-                        <span class="font-medium">${user.name}</span>
-                        <button onclick="confirmDeleteUser('${user.id}', '${user.name}')" class="text-red-500 hover:text-red-400"><i class="fas fa-trash-alt"></i></button>
+                : users.map(user => {
+                    const photoHtml = getPlayerPhotoHtml(user.id, 'w-12 h-12');
+                    return `
+                    <div class="flex items-center gap-4 bg-gray-900 p-2 rounded-lg">
+                        <div class="relative flex-shrink-0">
+                            <label for="photo-upload-${user.id}" class="cursor-pointer">
+                                ${photoHtml}
+                            </label>
+                            <input type="file" id="photo-upload-${user.id}" class="hidden" accept="image/*" onchange="handlePhotoUpload('${user.id}', this)">
+                        </div>
+                        <div class="flex-grow">
+                            <input type="text" id="user-name-input-${user.id}" value="${user.name}" data-original-name="${user.name}" class="w-full bg-transparent rounded-md p-1 -m-1 focus:bg-gray-800 focus:ring-1 focus:ring-blue-500 outline-none" readonly>
+                        </div>
+                        <div class="flex items-center gap-1 flex-shrink-0">
+                            <button id="edit-user-btn-${user.id}" onclick="toggleEditUser('${user.id}')" class="cyber-btn text-sm px-3 py-1 rounded-md"><i class="fas fa-edit"></i></button>
+                            <button onclick="confirmDeleteUser('${user.id}')" class="cyber-btn-red text-sm px-3 py-1 rounded-md"><i class="fas fa-trash-alt"></i></button>
+                        </div>
                     </div>
-                `).join('');
+                `}).join('');
         }
         
         window.updateLeaderboard = () => {
@@ -632,11 +674,17 @@
                     }
                     return '';
                 };
+                const photoHtml = getPlayerPhotoHtml(user.id, 'w-8 h-8');
                 
                 return `
                     <tr class="hover:bg-gray-800 font-m-gothic text-xs md:text-sm">
                         <td class="px-2 py-4 whitespace-nowrap text-right sticky-col-1">${index + 1}</td>
-                        <td class="px-2 py-4 whitespace-nowrap text-left font-medium text-blue-400 cursor-pointer hover:underline sticky-col-2" onclick="showPlayerStats('${user.id}')">${user.name}</td>
+                        <td class="px-2 py-4 whitespace-nowrap text-left font-medium text-blue-400 cursor-pointer hover:underline sticky-col-2" onclick="showPlayerStats('${user.id}')">
+                            <div class="flex items-center gap-3">
+                                ${photoHtml}
+                                <span>${user.name}</span>
+                            </div>
+                        </td>
                         <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right font-bold ${user.totalPoints >= 0 ? 'text-green-400' : 'text-red-400'}">${(user.totalPoints).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</td>
                         <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right">${user.totalHanchans.toLocaleString()}</td>
                         <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('avgRank', user.avgRank)}">${user.avgRank.toFixed(2)}</td>
@@ -663,8 +711,11 @@
             listContainer.className = 'space-y-4';
             listContainer.innerHTML = games.map(game => {
                     const date = game.gameDate || new Date(game.createdAt.seconds * 1000).toLocaleString('ja-JP');
-                    const winner = Object.entries(game.totalPoints).sort((a, b) => b[1] - a[1])[0];
-                    const winnerUser = users.find(u => u.id === winner[0]);
+                    const winnerEntry = Object.entries(game.totalPoints).sort((a, b) => b[1] - a[1])[0];
+                    const winnerId = winnerEntry[0];
+                    const winnerUser = users.find(u => u.id === winnerId);
+                    const photoHtml = getPlayerPhotoHtml(winnerId, 'w-8 h-8');
+
                     return `
                         <div class="p-4 rounded-lg bg-gray-900 border border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                             <div class="cursor-pointer flex-grow" onclick="showGameDetails('${game.id}')">
@@ -672,9 +723,12 @@
                                 <p class="text-sm text-gray-400">${game.playerNames.join(', ')}</p>
                             </div>
                             <div class="flex justify-between w-full sm:w-auto">
-                                <div class="text-left sm:text-right mr-4 cursor-pointer" onclick="showGameDetails('${game.id}')">
-                                    <p class="text-sm">WINNER</p>
-                                    <p class="font-bold text-green-400">${winnerUser ? winnerUser.name : 'N/A'} (+${winner[1].toFixed(1)})</p>
+                                <div class="text-left sm:text-right mr-4 cursor-pointer flex items-center gap-2" onclick="showGameDetails('${game.id}')">
+                                    ${photoHtml}
+                                    <div>
+                                        <p class="text-xs">WINNER</p>
+                                        <p class="font-bold text-green-400">${winnerUser ? winnerUser.name : 'N/A'} (+${winnerEntry[1].toFixed(1)})</p>
+                                    </div>
                                 </div>
                                 <button onclick="confirmDeleteGame('${game.id}', '${date}')" class="text-red-500 hover:text-red-400 text-lg p-2 self-center"><i class="fas fa-trash-alt"></i></button>
                             </div>
@@ -775,6 +829,10 @@
                 container.innerHTML = `<p class="text-gray-500">雀士を選択して成績を表示します。</p>`;
                 return;
             }
+            const player = users.find(u => u.id === playerId);
+            if (!player) return;
+
+            const photoHtml = getPlayerPhotoHtml(playerId, 'w-20 h-20');
             
             const comparisonOptions = users
                 .filter(u => u.id !== playerId)
@@ -786,6 +844,10 @@
                 `).join('');
 
             container.innerHTML = `
+                <div class="flex items-center gap-4 mb-6">
+                    ${photoHtml}
+                    <h3 class="cyber-header text-3xl font-bold text-blue-400">${player.name}</h3>
+                </div>
                 <div id="detailed-stats-container"></div>
                 <div class="cyber-card p-4 mb-6">
                     <h4 class="font-bold mb-2">比較対象</h4>
@@ -1098,6 +1160,8 @@
                 }
             });
         }
+        
+        // --- User & Game Management ---
 
         window.addUser = async () => {
             const nameInput = document.getElementById('new-user-name');
@@ -1106,16 +1170,104 @@
             if (users.some(u => u.name === name)) { showModalMessage("同じ名前の雀士が既に存在します。"); return; }
             try {
                 const usersCollectionRef = collection(db, `users`);
-                await addDoc(usersCollectionRef, { name: name, createdAt: new Date() });
+                await addDoc(usersCollectionRef, { name: name, createdAt: new Date(), photoURL: null });
                 nameInput.value = '';
                 showModalMessage(`「${name}」さんを登録しました。`);
             } catch (error) { console.error("Error adding user: ", error); showModalMessage("ユーザーの追加に失敗しました。"); }
         };
 
-        window.confirmDeleteUser = (id, name) => {
+        window.handlePhotoUpload = async (userId, inputElement) => {
+            const file = inputElement.files[0];
+            if (!file) return;
+
+            showModalMessage("写真をアップロード中...");
+
+            const storageRef = ref(storage, `user-photos/${userId}/${file.name}`);
+
+            try {
+                const snapshot = await uploadBytes(storageRef, file);
+                const downloadURL = await getDownloadURL(snapshot.ref);
+
+                const userDocRef = doc(db, 'users', userId);
+                await updateDoc(userDocRef, { photoURL: downloadURL });
+                
+                // The onSnapshot listener will automatically update the UI
+                showModalMessage("写真が更新されました。");
+
+            } catch (error) {
+                console.error("Photo upload failed:", error);
+                showModalMessage("写真のアップロードに失敗しました。");
+            }
+        };
+
+        async function executeUserNameUpdate(userId, newName) {
+            const userDocRef = doc(db, 'users', userId);
+            const batch = writeBatch(db);
+
+            batch.update(userDocRef, { name: newName });
+
+            const gamesQuery = query(collection(db, 'games'), where('playerIds', 'array-contains', userId));
+            const gamesSnapshot = await getDocs(gamesQuery);
+            
+            gamesSnapshot.forEach(gameDoc => {
+                const gameData = gameDoc.data();
+                const playerIndex = gameData.playerIds.indexOf(userId);
+                if (playerIndex !== -1) {
+                    const newPlayerNames = [...gameData.playerNames];
+                    newPlayerNames[playerIndex] = newName;
+                    batch.update(gameDoc.ref, { playerNames: newPlayerNames });
+                }
+            });
+
+            await batch.commit();
+        }
+
+        window.toggleEditUser = async (userId) => {
+            const input = document.getElementById(`user-name-input-${userId}`);
+            const editBtn = document.getElementById(`edit-user-btn-${userId}`);
+            const originalName = input.dataset.originalName;
+
+            if (input.readOnly) {
+                input.readOnly = false;
+                input.focus();
+                input.setSelectionRange(input.value.length, input.value.length);
+                editBtn.innerHTML = '<i class="fas fa-save"></i>';
+                editBtn.classList.add('cyber-btn-green');
+            } else {
+                const newName = input.value.trim();
+
+                if (!newName) {
+                    showModalMessage("雀士名は空にできません。");
+                    input.value = originalName;
+                } else if (newName !== originalName && users.some(u => u.name === newName && u.id !== userId)) {
+                    showModalMessage("同じ名前の雀士が既に存在します。");
+                    input.value = originalName;
+                } else if (newName !== originalName) {
+                    try {
+                        await executeUserNameUpdate(userId, newName);
+                        const playerInGame = selectedPlayers.find(p => p.id === userId);
+                        if(playerInGame) playerInGame.name = newName;
+                        showModalMessage("雀士名を更新しました。");
+                        input.dataset.originalName = newName;
+                    } catch (error) {
+                        console.error("Error updating user name: ", error);
+                        showModalMessage("名前の更新に失敗しました。");
+                        input.value = originalName;
+                    }
+                }
+                
+                input.readOnly = true;
+                editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+                editBtn.classList.remove('cyber-btn-green');
+            }
+        };
+
+        window.confirmDeleteUser = (id) => {
+            const user = users.find(u => u.id === id);
+            if (!user) return;
             showModal(`
                 <h3 class="cyber-header text-xl font-bold text-red-400 mb-4">削除確認</h3>
-                <p>「${name}」を削除しますか？<br>関連する全ての対局データも永久に削除されます。この操作は元に戻せません。</p>
+                <p>「${user.name}」を削除しますか？<br>関連する全ての対局データも永久に削除されます。この操作は元に戻せません。</p>
                 <div class="flex justify-end gap-4 mt-6">
                     <button onclick="closeModal()" class="cyber-btn px-4 py-2 rounded-lg">キャンセル</button>
                     <button onclick="executeDeleteUser('${id}')" class="cyber-btn cyber-btn-red px-4 py-2 rounded-lg">削除実行</button>
@@ -1162,11 +1314,10 @@
         
         // --- Game Flow Functions ---
 
-        // NEW HELPER: Calculate ranks and points for a single hanchan
         function calculateHanchanRanksAndPoints(scores) {
             const result = { points: {}, rawRanks: {}, pointRanks: {} };
             if (Object.values(scores).some(s => s === null || s === '')) {
-                return result; // Not complete, return empty
+                return result;
             }
 
             const basePoint = Number(document.getElementById('base-point').value);
@@ -1314,38 +1465,41 @@
             const scores = hanchanScores[index];
             
             const modalHtml = `
-                <h3 class="cyber-header text-xl font-bold text-blue-400 mb-4">半荘 #${index + 1} スコア入力</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Score Inputs -->
-                    <div class="space-y-3">
-                        ${selectedPlayers.map(p => `
-                            <div>
-                                <label class="block text-sm font-medium text-gray-400">${p.name}</label>
-                                <input type="text" id="modal-score-${p.id}" 
-                                       class="modal-score-input mt-1 block w-full rounded-md shadow-sm sm:text-lg p-3 text-right border-2 border-transparent" 
-                                       value="${scores[p.id] || ''}" 
-                                       onfocus="setActiveInput('modal-score-${p.id}')"
-                                       readonly>
+                <div class="flex flex-col md:flex-row md:gap-6 h-full max-h-[85vh] md:max-h-none">
+                    <div class="flex-grow overflow-y-auto mb-4 md:mb-0 pr-2"> <!-- 入力エリア (左側/上側) -->
+                        <h3 class="cyber-header text-xl font-bold text-blue-400 mb-4">半荘 #${index + 1} スコア入力</h3>
+                        <div class="space-y-3">
+                            ${selectedPlayers.map(p => `
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-400">${p.name}</label>
+                                    <input type="text" id="modal-score-${p.id}" 
+                                           class="modal-score-input mt-1 block w-full rounded-md shadow-sm sm:text-lg p-3 text-right border-2 border-transparent" 
+                                           value="${scores[p.id] || ''}" 
+                                           onfocus="setActiveInput('modal-score-${p.id}')"
+                                           readonly>
+                                </div>
+                            `).join('')}
+                             <div>
+                                <label class="block text-sm font-medium text-gray-400">合計</label>
+                                <div id="modal-total-score" class="mt-1 block w-full rounded-md bg-gray-900 p-3 text-right sm:text-lg">0</div>
                             </div>
-                        `).join('')}
-                         <div>
-                            <label class="block text-sm font-medium text-gray-400">合計</label>
-                            <div id="modal-total-score" class="mt-1 block w-full rounded-md bg-gray-900 p-3 text-right sm:text-lg">0</div>
                         </div>
                     </div>
-                    <!-- Numeric Keypad -->
-                    <div class="grid grid-cols-3 gap-2">
-                        ${[7, 8, 9, 4, 5, 6, 1, 2, 3, 0, '00', '000'].map(key => `
-                            <button onclick="keypadInput('${key}')" class="cyber-btn aspect-square text-2xl font-bold">${key}</button>
-                        `).join('')}
-                        <button onclick="keypadInput('マイナス')" class="cyber-btn aspect-square text-2xl font-bold">-</button>
-                        <button onclick="keypadInput('C')" class="cyber-btn-red aspect-square text-2xl font-bold">C</button>
-                        <button onclick="keypadInput('auto')" class="cyber-btn-green aspect-square text-xl font-bold">AUTO</button>
+
+                    <div class="flex-shrink-0 md:w-52 flex flex-col"> <!-- テンキーエリア (右側/下側) -->
+                        <div class="grid grid-cols-3 gap-2">
+                            ${[7, 8, 9, 4, 5, 6, 1, 2, 3, 0, '00', '000'].map(key => `
+                                <button onclick="keypadInput('${key}')" class="cyber-btn aspect-square text-2xl font-bold">${key}</button>
+                            `).join('')}
+                            <button onclick="keypadInput('マイナス')" class="cyber-btn aspect-square text-2xl font-bold">-</button>
+                            <button onclick="keypadInput('C')" class="cyber-btn-red aspect-square text-2xl font-bold">C</button>
+                            <button onclick="keypadInput('auto')" class="cyber-btn-green aspect-square text-xl font-bold">AUTO</button>
+                        </div>
+                        <div class="flex justify-end gap-4 mt-auto pt-4">
+                            <button onclick="closeModal()" class="cyber-btn px-4 py-2 rounded-lg">キャンセル</button>
+                            <button onclick="saveScoresFromModal(${index})" class="cyber-btn-yellow px-4 py-2 rounded-lg">保存</button>
+                        </div>
                     </div>
-                </div>
-                <div class="flex justify-end gap-4 mt-6">
-                    <button onclick="closeModal()" class="cyber-btn px-4 py-2 rounded-lg">キャンセル</button>
-                    <button onclick="saveScoresFromModal(${index})" class="cyber-btn-yellow px-4 py-2 rounded-lg">保存</button>
                 </div>
             `;
             showModal(modalHtml);
@@ -1461,7 +1615,6 @@
                 Number(document.getElementById('uma-1').value), Number(document.getElementById('uma-2').value),
                 Number(document.getElementById('uma-3').value), Number(document.getElementById('uma-4').value)
             ];
-            const oka = ((returnPoint - basePoint) * 4) / 1000;
             
             const hanchanData = [];
             
@@ -1622,7 +1775,11 @@
             
             const playerHeaders = game.playerIds.map(pId => {
                 const player = users.find(u => u.id === pId);
-                return `<th class="px-2 py-2 text-right">${player ? player.name : 'N/A'}</th>`;
+                const photoHtml = getPlayerPhotoHtml(pId, 'w-10 h-10');
+                return `<th class="px-2 py-2 text-center">
+                    ${photoHtml}
+                    <div class="text-xs mt-1">${player ? player.name : 'N/A'}</div>
+                </th>`;
             }).join('');
             
             const ranksBody = game.scores.map((hanchan, index) => {
@@ -1648,7 +1805,7 @@
                     let rankClass = '';
                     if (rank === 1) rankClass = 'text-rank-1';
                     if (rank === 4) rankClass = 'text-rank-4';
-                    return `<td class="px-2 py-2 text-right font-m-gothic ${rankClass}">${rank}</td>`;
+                    return `<td class="px-2 py-2 text-center font-m-gothic ${rankClass}">${rank}</td>`;
                 }).join('');
                 return `<tr><td class="px-2 py-2 text-center font-bold">#${index + 1}</td>${rankCells}</tr>`;
             }).join('');
@@ -1679,7 +1836,7 @@
                         let rankClass = '';
                         if (rank === 1) rankClass = 'text-rank-1';
                         if (rank === 4) rankClass = 'text-rank-4';
-                        return `<td class="px-2 py-2 text-right font-m-gothic ${rankClass}">${dataType === 'points' ? score.toFixed(1) : score.toLocaleString()}</td>`;
+                        return `<td class="px-2 py-2 text-center font-m-gothic ${rankClass}">${dataType === 'points' ? score.toFixed(1) : score.toLocaleString()}</td>`;
                     }).join('');
                     return `<tr><td class="px-2 py-2 text-center font-bold">#${index + 1}</td>${scoreCells}</tr>`;
                 }).join('');
@@ -1777,8 +1934,17 @@
         };
 
         window.togglePlayerSelection = (checkbox) => {
-            if (checkbox.checked) { if (selectedPlayers.length < 4) selectedPlayers.push({ id: checkbox.value, name: checkbox.name }); }
-            else { selectedPlayers = selectedPlayers.filter(p => p.id !== checkbox.value); }
+            const user = users.find(u => u.id === checkbox.value);
+            if (!user) return;
+
+            if (checkbox.checked) { 
+                if (selectedPlayers.length < 4) {
+                    selectedPlayers.push({ id: user.id, name: user.name, photoURL: user.photoURL });
+                }
+            }
+            else { 
+                selectedPlayers = selectedPlayers.filter(p => p.id !== checkbox.value); 
+            }
             document.getElementById('to-step2-btn').disabled = selectedPlayers.length !== 4;
             renderPlayerSelection();
         };
