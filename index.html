@@ -192,8 +192,8 @@
         let activeInputId = null; // Holds the ID of the active score input in the modal
         let rankChart = null;
         let pointHistoryChart = null;
-        let leagueRankPieChart = null;
-        let scoreRankScatterChart = null;
+        let playerRadarChart = null;
+        let playerBarChart = null;
         
         // --- Firebase Config ---
         const firebaseConfig = {
@@ -267,22 +267,43 @@
                     });
                 });
             });
+
+            // Calculate derived stats
+            Object.values(stats).forEach(u => {
+                if (u.totalHanchans > 0) {
+                    u.avgRank = u.ranks.reduce((sum, count, i) => sum + count * (i + 1), 0) / u.totalHanchans;
+                    u.topRate = (u.ranks[0] / u.totalHanchans) * 100;
+                    u.rentaiRate = ((u.ranks[0] + u.ranks[1]) / u.totalHanchans) * 100;
+                    u.lastRate = (u.ranks[3] / u.totalHanchans) * 100;
+                    u.bustedRate = (u.bustedCount / u.totalHanchans) * 100;
+                    u.avgRawScore = Math.round((u.totalRawScore / u.totalHanchans) / 100) * 100;
+                } else {
+                    u.avgRank = 0; u.topRate = 0; u.rentaiRate = 0; u.lastRate = 0; u.bustedRate = 0; u.avgRawScore = 0;
+                }
+            });
+
             return stats;
         }
 
-        function getPlayerPointHistory(playerId) {
+        function getPlayerPointHistory(playerId, fullTimeline) {
             let cumulativePoints = 0;
-            const history = [];
-            const playerGames = [...games]
+            const playerGamesByDate = {};
+            [...games]
                 .filter(g => g.playerIds.includes(playerId))
-                .sort((a, b) => a.createdAt.seconds - b.createdAt.seconds);
-
-            playerGames.forEach((game, index) => {
-                cumulativePoints += game.totalPoints[playerId];
-                history.push({ 
-                    date: game.gameDate || new Date(game.createdAt.seconds * 1000).toLocaleDateString('ja-JP'),
-                    points: cumulativePoints 
+                .forEach(game => {
+                    const date = game.gameDate.split('(')[0];
+                    if (!playerGamesByDate[date]) {
+                        playerGamesByDate[date] = 0;
+                    }
+                    playerGamesByDate[date] += game.totalPoints[playerId];
                 });
+
+            const history = [];
+            fullTimeline.forEach(date => {
+                if (playerGamesByDate[date]) {
+                    cumulativePoints += playerGamesByDate[date];
+                }
+                history.push(cumulativePoints);
             });
             return history;
         }
@@ -541,19 +562,30 @@
             const container = document.getElementById('data-analysis-tab');
             container.innerHTML = `
                 <div class="space-y-6">
-                    <h2 class="cyber-header text-2xl font-bold text-blue-400 border-b border-gray-700 pb-2">データ分析</h2>
+                    <h2 class="cyber-header text-2xl font-bold text-blue-400 border-b border-gray-700 pb-2">データ分析ダッシュボード</h2>
+                    
+                    <!-- Stat Cards Row -->
+                    <div id="stat-cards-container" class="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <!-- Charts Grid -->
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div class="cyber-card p-4 sm:p-6">
-                            <h3 class="cyber-header text-xl font-bold mb-4 text-center">雀士別1着割合</h3>
-                            <div class="w-full h-64 mx-auto"><canvas id="league-rank-pie-chart"></canvas></div>
+                        <div class="cyber-card p-4 sm:p-6 min-h-[300px] md:min-h-[400px]">
+                            <h3 class="cyber-header text-xl font-bold mb-4 text-center">雀士スタイル分析</h3>
+                            <div id="radar-player-select" class="flex flex-wrap justify-center gap-x-4 gap-y-2 mb-2 text-sm"></div>
+                            <div class="relative h-64 md:h-80"><canvas id="player-radar-chart"></canvas></div>
                         </div>
-                        <div class="cyber-card p-4 sm:p-6">
+                        <div class="cyber-card p-4 sm:p-6 min-h-[300px] md:min-h-[400px]">
                             <h3 class="cyber-header text-xl font-bold mb-4 text-center">ポイント推移</h3>
-                            <div class="w-full h-64 mx-auto"><canvas id="point-history-chart"></canvas></div>
+                            <div class="relative h-72 md:h-96"><canvas id="point-history-chart"></canvas></div>
                         </div>
                         <div class="cyber-card p-4 sm:p-6 lg:col-span-2">
-                            <h3 class="cyber-header text-xl font-bold mb-4 text-center">平均素点 vs 平均着順</h3>
-                            <div class="w-full h-80 mx-auto"><canvas id="score-rank-scatter-chart"></canvas></div>
+                             <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-2">
+                                <h3 class="cyber-header text-xl font-bold text-center">雀士スタッツ比較</h3>
+                                <select id="bar-chart-metric-select" onchange="updateDataAnalysisCharts()" class="p-2 rounded-md text-sm"></select>
+                             </div>
+                            <div class="relative h-80"><canvas id="player-bar-chart"></canvas></div>
                         </div>
                     </div>
                 </div>
@@ -1017,146 +1049,188 @@
             });
         }
         
-        function updateDataAnalysisCharts() {
+        window.updateDataAnalysisCharts = function() {
             if (!document.getElementById('data-analysis-tab') || document.getElementById('data-analysis-tab').classList.contains('hidden')) {
                 return;
             }
 
             const allStats = calculateAllPlayerStats(games);
-            const rankedUsers = Object.values(allStats).filter(u => u.totalHanchans > 0).sort((a,b) => b.totalPoints - a.totalPoints);
-            const colors = [
-                '#58a6ff', '#52c569', '#f5655f', '#E2FF08', '#e0aaff', '#9bf6ff',
-                '#ffb700', '#00ffc8', '#ff73a9', '#66ff66', '#a9c5ff', '#ffc107',
-                '#81d4fa', '#ff9800', '#c8e6c9', '#ff5252', '#a1887f', '#b388ff'
-            ];
-            
-            // League Rank Pie Chart
-            const firstPlaceStats = rankedUsers.filter(u => u.ranks[0] > 0);
-            if (leagueRankPieChart) leagueRankPieChart.destroy();
-            leagueRankPieChart = new Chart(document.getElementById('league-rank-pie-chart').getContext('2d'), {
-                type: 'pie',
-                data: {
-                    labels: firstPlaceStats.map(u => u.name),
-                    datasets: [{
-                        data: firstPlaceStats.map(u => u.ranks[0]),
-                        backgroundColor: firstPlaceStats.map((_, index) => colors[index % colors.length]),
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'top', labels: { color: '#c9d1d9' } },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.label || '';
-                                    if (label) { label += ': '; }
-                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    const value = context.raw;
-                                    const percentage = total > 0 ? (value / total * 100).toFixed(1) + '%' : '0%';
-                                    return `${label}${value}回 (${percentage})`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
+            const rankedUsers = Object.values(allStats).filter(u => u.totalHanchans > 0);
+            const colors = ['#58a6ff', '#52c569', '#f5655f', '#E2FF08', '#e0aaff', '#9bf6ff', '#ffb700', '#00ffc8'];
 
-            // Point History Chart
-            const allPlayers = Object.values(allStats).filter(u => u.totalHanchans > 0);
-            const allDates = [...new Set(games.map(g => g.gameDate || new Date(g.createdAt.seconds * 1000).toLocaleDateString('ja-JP')))].sort();
-            
-            if (pointHistoryChart) pointHistoryChart.destroy();
+            // --- 1. Stat Cards ---
+            const statCardsContainer = document.getElementById('stat-cards-container');
+            if (rankedUsers.length > 0) {
+                const totalHanchans = rankedUsers.reduce((sum, u) => sum + u.totalHanchans, 0);
+                const gameDays = new Set(games.map(g => g.gameDate.split('(')[0])).size;
+                const leader = [...rankedUsers].sort((a, b) => b.totalPoints - a.totalPoints)[0];
 
-            const pointHistoryDatasets = allPlayers.map((player, index) => {
-                const history = getPlayerPointHistory(player.id);
-                const data = [];
-                let lastPoint = 0;
-                let historyIndex = 0;
-                allDates.forEach(date => {
-                    while(history[historyIndex] && new Date(history[historyIndex].date) <= new Date(date)) {
-                        lastPoint = history[historyIndex].points;
-                        historyIndex++;
-                    }
-                    data.push(lastPoint);
+                // Most Hanchans
+                const topHanchans = [...rankedUsers].sort((a,b) => b.totalHanchans - a.totalHanchans)[0];
+                const hanchanParticipationRate = totalHanchans > 0 ? (topHanchans.totalHanchans / totalHanchans * 100).toFixed(1) : 0;
+                
+                // Most Days
+                const participationDays = {};
+                users.forEach(u => participationDays[u.id] = new Set());
+                games.forEach(g => {
+                    const date = g.gameDate.split('(')[0];
+                    g.playerIds.forEach(pId => participationDays[pId].add(date));
                 });
+                const topDays = [...rankedUsers].sort((a,b) => participationDays[b.id].size - participationDays[a.id].size)[0];
+                const daysParticipationRate = gameDays > 0 ? (participationDays[topDays.id].size / gameDays * 100).toFixed(1) : 0;
 
+                // Highest Hanchan Score
+                let highestHanchan = { score: -Infinity, name: '', id: '' };
+                games.forEach(g => g.scores.forEach(s => Object.entries(s.rawScores).forEach(([pId, score]) => {
+                    if (score > highestHanchan.score) {
+                        highestHanchan = { score, name: users.find(u=>u.id===pId)?.name, id: pId };
+                    }
+                })));
+
+                // Highest Daily PT
+                const dailyPoints = {};
+                games.forEach(g => {
+                    const date = g.gameDate.split('(')[0];
+                    if(!dailyPoints[date]) dailyPoints[date] = {};
+                    Object.entries(g.totalPoints).forEach(([pId, pts]) => {
+                        if(!dailyPoints[date][pId]) dailyPoints[date][pId] = 0;
+                        dailyPoints[date][pId] += pts;
+                    });
+                });
+                let highestDaily = { pt: -Infinity, name: '', id: '' };
+                Object.values(dailyPoints).forEach(day => Object.entries(day).forEach(([pId, pt]) => {
+                     if (pt > highestDaily.pt) {
+                        highestDaily = { pt, name: users.find(u=>u.id===pId)?.name, id: pId };
+                    }
+                }));
+
+                statCardsContainer.innerHTML = `
+                    <div class="cyber-card p-3"><p class="text-sm text-gray-400">総半荘数</p><p class="text-2xl font-bold">${totalHanchans}</p><p class="text-xs text-gray-500">開催日数: ${gameDays}日</p></div>
+                    <div class="cyber-card p-3"><p class="text-sm text-gray-400">現時点トップ</p><p class="text-xl font-bold text-blue-400">${leader.name}</p><p class="text-xs">${leader.totalPoints.toFixed(1)} pt</p></div>
+                    <div class="cyber-card p-3"><p class="text-sm text-gray-400">参加半荘数トップ</p><p class="text-xl font-bold">${topHanchans.name}</p><p class="text-xs">参加 ${topHanchans.totalHanchans}半荘：参加率 ${hanchanParticipationRate}％</p></div>
+                    <div class="cyber-card p-3"><p class="text-sm text-gray-400">参加日数トップ</p><p class="text-xl font-bold">${topDays.name}</p><p class="text-xs">参加 ${participationDays[topDays.id].size}日：参加率 ${daysParticipationRate}％</p></div>
+                    <div class="cyber-card p-3"><p class="text-sm text-gray-400">1半荘最高素点</p><p class="text-xl font-bold text-green-400">${highestHanchan.name}</p><p class="text-xs">${highestHanchan.score.toLocaleString()}点</p></div>
+                    <div class="cyber-card p-3"><p class="text-sm text-gray-400">1日最高獲得Pt</p><p class="text-xl font-bold text-yellow-400">${highestDaily.name}</p><p class="text-xs">+${highestDaily.pt.toFixed(1)} pt</p></div>
+                `;
+            } else {
+                statCardsContainer.innerHTML = `<div class="col-span-full text-center text-gray-500 py-4">データがありません</div>`;
+                return; // No data, no charts
+            }
+
+            // --- 2. Radar Chart ---
+            const radarPlayerSelect = document.getElementById('radar-player-select');
+            const top4players = [...rankedUsers].sort((a, b) => b.totalPoints - a.totalPoints).slice(0, 4);
+            
+            if (radarPlayerSelect.innerHTML === '') { // Only populate once
+                radarPlayerSelect.innerHTML = rankedUsers.map(u => {
+                    const isChecked = top4players.some(p => p.id === u.id);
+                    return `<div><input type="checkbox" id="radar-check-${u.id}" value="${u.id}" class="radar-checkbox" onchange="updateDataAnalysisCharts()" ${isChecked ? 'checked' : ''}><label for="radar-check-${u.id}" class="ml-1">${u.name}</label></div>`;
+                }).join('');
+            }
+
+            const radarLabels = ['平均素点', 'トップ率', '連対率', 'ラス回避率', '平均順位'];
+            const radarStatKeys = { '平均素点': 'avgRawScore', 'トップ率': 'topRate', '連対率': 'rentaiRate', 'ラス回避率': 'lastRate', '平均順位': 'avgRank' };
+            
+            const radarMinMax = {};
+            Object.values(radarStatKeys).forEach(key => {
+                const values = rankedUsers.map(u => u[key]);
+                radarMinMax[key] = { min: Math.min(...values), max: Math.max(...values) };
+            });
+            // For inverted stats
+            radarMinMax.lastRate.min = 0; radarMinMax.lastRate.max = 100; // Rate is 0-100
+            radarMinMax.avgRank.min = 1; radarMinMax.avgRank.max = 4; // Rank is 1-4
+
+            const normalize = (value, key) => {
+                const { min, max } = radarMinMax[key];
+                if (max === min) return 50;
+                // Invert score for "lower is better" stats
+                if (key === 'lastRate') return 100 * ( (max - value) / (max - min) );
+                if (key === 'avgRank') return 100 * ( (max - value) / (max - min) );
+                return 100 * ( (value - min) / (max - min) );
+            };
+
+            const checkedRadarBoxes = document.querySelectorAll('.radar-checkbox:checked');
+            const selectedRadarPlayerIds = Array.from(checkedRadarBoxes).map(cb => cb.value);
+            
+            const radarDatasets = selectedRadarPlayerIds.map((pId, index) => {
+                const userStats = rankedUsers.find(u => u.id === pId);
                 return {
-                    label: player.name,
-                    data: data,
+                    label: userStats.name,
+                    data: radarLabels.map(label => normalize(userStats[radarStatKeys[label]], radarStatKeys[label])),
                     borderColor: colors[index % colors.length],
                     backgroundColor: colors[index % colors.length] + '33',
-                    fill: false,
-                    tension: 0.1
+                    pointBackgroundColor: colors[index % colors.length],
+                };
+            });
+
+            if (playerRadarChart) playerRadarChart.destroy();
+            playerRadarChart = new Chart(document.getElementById('player-radar-chart').getContext('2d'), {
+                type: 'radar',
+                data: { labels: radarLabels, datasets: radarDatasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { r: { angleLines: { color: '#30363d' }, grid: { color: '#30363d' }, pointLabels: { color: '#c9d1d9' }, suggestedMin: 0, suggestedMax: 100, ticks: { display: false } } }
                 }
             });
 
+            // --- 3. Point History Chart ---
+            const allPlayers = [...rankedUsers].sort((a,b) => b.totalPoints - a.totalPoints);
+            const dateStrings = games.map(g => g.gameDate.split('(')[0]);
+            const today = new Date();
+            const todayString = `${today.getFullYear()}/${today.getMonth() + 1}/${today.getDate()}`;
+            dateStrings.push(todayString);
+            const fullTimeline = [...new Set(dateStrings)].sort((a, b) => new Date(a) - new Date(b));
+
+            const pointHistoryDatasets = allPlayers.map((player, index) => {
+                const history = getPlayerPointHistory(player.id, fullTimeline);
+                return {
+                    label: player.name,
+                    data: history,
+                    borderColor: colors[index % colors.length],
+                    backgroundColor: colors[index % colors.length] + '33',
+                    fill: false, tension: 0.1,
+                    stepped: 'before'
+                }
+            });
+
+            if (pointHistoryChart) pointHistoryChart.destroy();
             pointHistoryChart = new Chart(document.getElementById('point-history-chart').getContext('2d'), {
                 type: 'line',
-                data: {
-                    labels: allDates,
-                    datasets: pointHistoryDatasets
-                },
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false, 
-                    plugins: { 
-                        legend: { labels: { color: '#c9d1d9' }},
-                        tooltip: { mode: 'index', intersect: false }
-                    }, 
-                    scales: { 
-                        x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } }, 
-                        y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } } 
-                    } 
-                }
+                data: { labels: fullTimeline, datasets: pointHistoryDatasets },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#c9d1d9' }}}, scales: { x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } }, y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } } } }
             });
 
-            // Score vs Rank Scatter Chart
-            const scatterData = rankedUsers.map((user, index) => ({
-                x: user.avgRank,
-                y: user.avgRawScore,
-                label: user.name,
-                backgroundColor: colors[index % colors.length]
-            }));
-            if (scoreRankScatterChart) scoreRankScatterChart.destroy();
-            scoreRankScatterChart = new Chart(document.getElementById('score-rank-scatter-chart').getContext('2d'), {
-                type: 'scatter',
+            // --- 4. Bar Chart ---
+            const barChartMetricSelect = document.getElementById('bar-chart-metric-select');
+            const metrics = { 'totalPoints': '合計Pt', 'avgRawScore': '平均素点', 'topRate': 'トップ率', 'lastRate': 'ラス率', 'rentaiRate': '連対率', 'bustedRate': 'トビ率', 'avgRank': '平均順位' };
+            if (barChartMetricSelect.options.length === 0) {
+                 Object.entries(metrics).forEach(([key, value]) => {
+                    barChartMetricSelect.add(new Option(value, key));
+                });
+            }
+            const selectedMetric = barChartMetricSelect.value || 'totalPoints';
+            const lowerIsBetter = ['lastRate', 'bustedRate', 'avgRank'].includes(selectedMetric);
+            
+            const sortedBarUsers = [...rankedUsers].sort((a, b) => lowerIsBetter ? a[selectedMetric] - b[selectedMetric] : b[selectedMetric] - a[selectedMetric]);
+
+            if (playerBarChart) playerBarChart.destroy();
+            playerBarChart = new Chart(document.getElementById('player-bar-chart').getContext('2d'), {
+                type: 'bar',
                 data: {
+                    labels: sortedBarUsers.map(u => u.name),
                     datasets: [{
-                        label: '雀士スタイル',
-                        data: scatterData,
-                        backgroundColor: scatterData.map(d => d.backgroundColor)
+                        label: metrics[selectedMetric],
+                        data: sortedBarUsers.map(u => u[selectedMetric]),
+                        backgroundColor: sortedBarUsers.map((u, i) => colors[i % colors.length] + 'AA'),
+                        borderColor: sortedBarUsers.map((u, i) => colors[i % colors.length]),
+                        borderWidth: 1
                     }]
                 },
                 options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return context.raw.label + ` (着順: ${context.raw.x.toFixed(2)}, 素点: ${context.raw.y.toLocaleString()})`;
-                                }
-                            }
-                        },
-                        legend: { display: false }
-                    },
-                    scales: {
-                        x: { 
-                            title: { display: true, text: '平均着順', color: '#c9d1d9' }, 
-                            ticks: { color: '#8b949e' }, 
-                            grid: { color: '#30363d' },
-                            min: 1.00,
-                            max: 4.00
-                        },
-                        y: { 
-                            title: { display: true, text: '平均素点', color: '#c9d1d9' }, 
-                            ticks: { color: '#8b949e' }, 
-                            grid: { color: '#30363d' },
-                            min: -20000,
-                            max: 40000
-                        }
-                    }
+                    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } }, y: { ticks: { color: '#c9d1d9' }, grid: { color: '#30363d' } } }
                 }
             });
         }
@@ -1466,7 +1540,7 @@
             
             const modalHtml = `
                 <h3 class="cyber-header text-xl font-bold text-blue-400 mb-4">半荘 #${index + 1} スコア入力</h3>
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid md:grid-cols-2 gap-4">
                     <!-- Score Inputs -->
                     <div class="space-y-3">
                         ${selectedPlayers.map(p => `
