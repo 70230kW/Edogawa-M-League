@@ -117,19 +117,16 @@
         .modal-backdrop { background-color: rgba(0, 0, 0, 0.8); }
         .cyber-header { font-family: 'Orbitron', sans-serif; }
         .glowing-text { text-shadow: 0 0 8px var(--accent-glow); }
-        .text-rank-1 { color: var(--accent-green); }
-        .text-rank-4 { color: var(--accent-red); }
+        .text-rank-1 { color: var(--accent-green); font-weight: bold; }
+        .text-rank-4 { color: var(--accent-red); font-weight: bold; }
         .font-m-gothic { font-family: '"MS PGothic", "ＭＳ Ｐゴシック", sans-serif'; }
         
-        /* Sticky columns for scrollable tables */
         .sticky-col-1 { position: sticky; left: 0; z-index: 1; }
-        .sticky-col-2 { position: sticky; left: 56px; z-index: 1; } /* Adjust this value based on the width of the first column */
+        .sticky-col-2 { position: sticky; left: 56px; z-index: 1; }
         
-        /* Ensure sticky headers and columns have a solid background */
         .leaderboard-table th, .leaderboard-table td { background-color: var(--primary); }
         .leaderboard-table thead th { z-index: 2; }
 
-        /* Hide scrollbar utility */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
@@ -190,6 +187,8 @@
         let users = [];
         let games = [];
         let selectedPlayers = []; // {id, name}
+        let hanchanScores = [];   // Holds scores for each hanchan
+        let activeInputId = null; // Holds the ID of the active score input in the modal
         let rankChart = null;
         let pointHistoryChart = null;
         let leagueRankPieChart = null;
@@ -412,16 +411,18 @@
                              <button onclick="setTodayDate()" class="cyber-btn px-4 py-2 rounded-lg">今日</button>
                          </div>
                      </div>
-                     <div class="overflow-x-auto"><table class="min-w-full"><thead id="score-table-head"></thead><tbody id="score-table-body"></tbody></table></div>
-                     <div class="flex flex-col sm:flex-row justify-between items-center mt-4 flex-wrap gap-2">
-                        <div class="flex gap-2">
-                            <button onclick="addHanchan()" class="cyber-btn px-4 py-2 rounded-lg"><i class="fas fa-plus mr-2"></i>半荘追加</button>
-                            <button onclick="savePartialData()" class="cyber-btn cyber-btn-green px-4 py-2 rounded-lg"><i class="fas fa-floppy-disk mr-2"></i>途中保存</button>
+                     <!-- Score display area -->
+                     <div id="score-display-area" class="space-y-4"></div>
+                     <!-- Action buttons -->
+                     <div class="flex flex-col sm:flex-row justify-between items-center mt-4 flex-wrap gap-4">
+                        <div class="flex gap-2 w-full sm:w-auto">
+                            <button onclick="addHanchan()" class="cyber-btn px-4 py-2 rounded-lg w-full"><i class="fas fa-plus mr-2"></i>半荘追加</button>
+                            <button onclick="savePartialData()" class="cyber-btn cyber-btn-green px-4 py-2 rounded-lg w-full"><i class="fas fa-floppy-disk mr-2"></i>途中保存</button>
                         </div>
                         <button onclick="showCurrentPtStatus()" class="cyber-btn px-4 py-2 rounded-lg order-first sm:order-none w-full sm:w-auto"><i class="fas fa-calculator mr-2"></i>現在のPT状況</button>
-                        <div class="flex gap-2">
-                            <button onclick="backToStep2()" class="cyber-btn px-6 py-2 rounded-lg"><i class="fas fa-arrow-left mr-2"></i>戻る</button>
-                            <button onclick="calculateAndSave()" class="cyber-btn cyber-btn-yellow px-6 py-2 rounded-lg"><i class="fas fa-save mr-2"></i>Pt変換して保存</button>
+                        <div class="flex gap-2 w-full sm:w-auto">
+                            <button onclick="backToStep2()" class="cyber-btn px-6 py-2 rounded-lg w-full"><i class="fas fa-arrow-left mr-2"></i>戻る</button>
+                            <button onclick="calculateAndSave()" class="cyber-btn cyber-btn-yellow px-6 py-2 rounded-lg w-full"><i class="fas fa-save mr-2"></i>Pt変換して保存</button>
                         </div>
                     </div>
                 </div>
@@ -1160,6 +1161,299 @@
         };
         
         // --- Game Flow Functions ---
+
+        // NEW HELPER: Calculate ranks and points for a single hanchan
+        function calculateHanchanRanksAndPoints(scores) {
+            const result = { points: {}, rawRanks: {}, pointRanks: {} };
+            if (Object.values(scores).some(s => s === null || s === '')) {
+                return result; // Not complete, return empty
+            }
+
+            const basePoint = Number(document.getElementById('base-point').value);
+            const returnPoint = Number(document.getElementById('return-point').value);
+            const uma = [
+                Number(document.getElementById('uma-1').value), Number(document.getElementById('uma-2').value),
+                Number(document.getElementById('uma-3').value), Number(document.getElementById('uma-4').value)
+            ];
+            const oka = ((returnPoint - basePoint) * 4) / 1000;
+
+            const scoreGroups = {};
+            Object.entries(scores).forEach(([playerId, score]) => {
+                const s = Number(score);
+                if (!scoreGroups[s]) scoreGroups[s] = [];
+                scoreGroups[s].push(playerId);
+            });
+            const sortedScores = Object.keys(scoreGroups).map(Number).sort((a, b) => b - a);
+            
+            let rankCursor = 1;
+            sortedScores.forEach(score => {
+                const playersInGroup = scoreGroups[score];
+                playersInGroup.forEach(pId => { result.rawRanks[pId] = rankCursor; });
+                rankCursor += playersInGroup.length;
+            });
+
+            rankCursor = 0;
+            sortedScores.forEach(score => {
+                const playersInGroup = scoreGroups[score];
+                const groupSize = playersInGroup.length;
+                const umaSlice = uma.slice(rankCursor, rankCursor + groupSize);
+                const totalUma = umaSlice.reduce((a, b) => a + b, 0);
+                const sharedUma = totalUma / groupSize;
+                let sharedOka = 0;
+                if (rankCursor === 0) sharedOka = oka / groupSize;
+
+                playersInGroup.forEach(playerId => {
+                    const pointWithoutUma = (Number(score) - returnPoint) / 1000;
+                    result.points[playerId] = pointWithoutUma + sharedUma + sharedOka;
+                });
+                rankCursor += groupSize;
+            });
+
+            const pointGroups = {};
+            Object.entries(result.points).forEach(([playerId, p]) => {
+                if (!pointGroups[p]) pointGroups[p] = [];
+                pointGroups[p].push(playerId);
+            });
+            const sortedPoints = Object.keys(pointGroups).map(Number).sort((a, b) => b - a);
+            rankCursor = 1;
+            sortedPoints.forEach(p => {
+                const playersInGroup = pointGroups[p];
+                playersInGroup.forEach(pId => { result.pointRanks[pId] = rankCursor; });
+                rankCursor += playersInGroup.length;
+            });
+
+            return result;
+        }
+
+        function renderScoreDisplay() {
+            const container = document.getElementById('score-display-area');
+            if (!container) return;
+            container.innerHTML = hanchanScores.map((scores, index) => {
+                const total = Object.values(scores).reduce((sum, score) => sum + (Number(score) || 0), 0);
+                const basePoint = Number(document.getElementById('base-point').value);
+                const isComplete = Object.values(scores).every(s => s !== null && s !== '');
+                const totalColor = isComplete && total !== basePoint * 4 ? 'text-red-500' : (isComplete ? 'text-green-400' : '');
+
+                const { points, rawRanks, pointRanks } = calculateHanchanRanksAndPoints(scores);
+
+                return `
+                <div class="cyber-card p-3" id="hanchan-display-${index}">
+                    <div class="flex justify-between items-center mb-2">
+                        <h4 class="font-bold text-lg">半荘 #${index + 1}</h4>
+                        <div class="flex gap-2">
+                            <button onclick="openScoreInputModal(${index})" class="cyber-btn px-3 py-1 rounded-md text-sm"><i class="fas fa-edit mr-1"></i>編集</button>
+                            <button onclick="deleteHanchan(${index})" class="cyber-btn-red px-3 py-1 rounded-md text-sm"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr class="border-b border-gray-700 text-xs text-gray-400">
+                                    <th class="p-1 font-normal w-1/3">雀士</th>
+                                    <th class="p-1 text-right font-normal">素点</th>
+                                    <th class="p-1 text-right font-normal">Pt</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${selectedPlayers.map(p => {
+                                    const rawScoreRank = rawRanks[p.id];
+                                    const rawScoreClass = rawScoreRank === 1 ? 'text-rank-1' : (rawScoreRank === 4 ? 'text-rank-4' : '');
+                                    const pointRank = pointRanks[p.id];
+                                    const pointClass = pointRank === 1 ? 'text-rank-1' : (pointRank === 4 ? 'text-rank-4' : '');
+                                    const pointValue = points[p.id];
+
+                                    return `
+                                    <tr>
+                                        <td class="p-1 font-medium">${p.name}</td>
+                                        <td class="p-1 text-right font-m-gothic ${rawScoreClass}">${scores[p.id] !== null ? Number(scores[p.id]).toLocaleString() : '-'}</td>
+                                        <td class="p-1 text-right font-m-gothic ${pointClass}">${pointValue !== undefined ? pointValue.toFixed(1) : '-'}</td>
+                                    </tr>
+                                `}).join('')}
+                            </tbody>
+                            <tfoot>
+                                <tr class="border-t border-gray-700">
+                                    <th class="p-1">合計</th>
+                                    <th class="p-1 text-right font-bold ${totalColor}">${total.toLocaleString()}</th>
+                                    <th class="p-1 text-right font-bold">0.0</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+        
+        function setupScoreDisplay() {
+            hanchanScores = [];
+            addHanchan();
+        }
+
+        window.addHanchan = () => {
+            const newHanchan = {};
+            selectedPlayers.forEach(p => {
+                newHanchan[p.id] = null;
+            });
+            hanchanScores.push(newHanchan);
+            renderScoreDisplay();
+            setTimeout(() => {
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            }, 100);
+        };
+
+        window.deleteHanchan = (index) => {
+            if (hanchanScores.length > 1) {
+                hanchanScores.splice(index, 1);
+                renderScoreDisplay();
+            } else {
+                showModalMessage("最低1半荘は必要です。");
+            }
+        };
+
+        window.openScoreInputModal = (index) => {
+            const scores = hanchanScores[index];
+            
+            const modalHtml = `
+                <h3 class="cyber-header text-xl font-bold text-blue-400 mb-4">半荘 #${index + 1} スコア入力</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Score Inputs -->
+                    <div class="space-y-3">
+                        ${selectedPlayers.map(p => `
+                            <div>
+                                <label class="block text-sm font-medium text-gray-400">${p.name}</label>
+                                <input type="text" id="modal-score-${p.id}" 
+                                       class="modal-score-input mt-1 block w-full rounded-md shadow-sm sm:text-lg p-3 text-right border-2 border-transparent" 
+                                       value="${scores[p.id] || ''}" 
+                                       onfocus="setActiveInput('modal-score-${p.id}')"
+                                       readonly>
+                            </div>
+                        `).join('')}
+                         <div>
+                            <label class="block text-sm font-medium text-gray-400">合計</label>
+                            <div id="modal-total-score" class="mt-1 block w-full rounded-md bg-gray-900 p-3 text-right sm:text-lg">0</div>
+                        </div>
+                    </div>
+                    <!-- Numeric Keypad -->
+                    <div class="grid grid-cols-3 gap-2">
+                        ${[7, 8, 9, 4, 5, 6, 1, 2, 3, 0, '00', '000'].map(key => `
+                            <button onclick="keypadInput('${key}')" class="cyber-btn aspect-square text-2xl font-bold">${key}</button>
+                        `).join('')}
+                        <button onclick="keypadInput('マイナス')" class="cyber-btn aspect-square text-2xl font-bold">-</button>
+                        <button onclick="keypadInput('C')" class="cyber-btn-red aspect-square text-2xl font-bold">C</button>
+                        <button onclick="keypadInput('auto')" class="cyber-btn-green aspect-square text-xl font-bold">AUTO</button>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-4 mt-6">
+                    <button onclick="closeModal()" class="cyber-btn px-4 py-2 rounded-lg">キャンセル</button>
+                    <button onclick="saveScoresFromModal(${index})" class="cyber-btn-yellow px-4 py-2 rounded-lg">保存</button>
+                </div>
+            `;
+            showModal(modalHtml);
+            
+            setActiveInput(`modal-score-${selectedPlayers[0].id}`);
+            updateModalTotal();
+        };
+
+        window.setActiveInput = (inputId) => {
+            document.querySelectorAll('.modal-score-input').forEach(el => el.classList.remove('border-blue-500'));
+            const activeEl = document.getElementById(inputId);
+            if (activeEl) {
+                activeEl.classList.add('border-blue-500');
+                window.activeInputId = inputId;
+            }
+        };
+
+        window.keypadInput = (key) => {
+            const input = document.getElementById(window.activeInputId);
+            if (!input) return;
+
+            if (key === 'C') {
+                input.value = '';
+            } else if (key === 'マイナス') {
+                if (!input.value.startsWith('-')) {
+                    input.value = '-' + input.value;
+                }
+            } else if (key === 'auto') {
+                autoFillLastScore();
+            } else {
+                input.value += key;
+            }
+            updateModalTotal();
+        };
+
+        function updateModalTotal() {
+            let total = 0;
+            let filledCount = 0;
+            document.querySelectorAll('.modal-score-input').forEach(input => {
+                if (input.value.trim() !== '') {
+                    total += Number(input.value);
+                    filledCount++;
+                }
+            });
+            const totalDiv = document.getElementById('modal-total-score');
+            const basePoint = Number(document.getElementById('base-point').value);
+            totalDiv.textContent = total.toLocaleString();
+            totalDiv.classList.remove('text-red-500', 'text-green-400');
+            if (filledCount === 4) {
+                if(total === basePoint * 4) {
+                    totalDiv.classList.add('text-green-400');
+                } else {
+                    totalDiv.classList.add('text-red-500');
+                }
+            }
+        }
+
+        function autoFillLastScore() {
+            let total = 0;
+            let emptyInput = null;
+            let filledCount = 0;
+            document.querySelectorAll('.modal-score-input').forEach(input => {
+                if (input.value.trim() !== '') {
+                    total += Number(input.value);
+                    filledCount++;
+                } else {
+                    emptyInput = input;
+                }
+            });
+
+            if (filledCount === 3 && emptyInput) {
+                const basePoint = Number(document.getElementById('base-point').value);
+                const targetTotal = basePoint * 4;
+                emptyInput.value = targetTotal - total;
+                updateModalTotal();
+            }
+        }
+
+        window.saveScoresFromModal = (index) => {
+            const newScores = {};
+            let total = 0;
+            let hasEmpty = false;
+            selectedPlayers.forEach(p => {
+                const input = document.getElementById(`modal-score-${p.id}`);
+                const value = input.value;
+                if (value === '' || value === null) {
+                    hasEmpty = true;
+                    newScores[p.id] = null;
+                } else {
+                    const score = Number(value);
+                    newScores[p.id] = score;
+                    total += score;
+                }
+            });
+
+            if (!hasEmpty) {
+                const basePoint = Number(document.getElementById('base-point').value);
+                if (Math.round(total) !== basePoint * 4) {
+                    showModalMessage(`合計点が ${basePoint*4} になっていません。(現在: ${total})`);
+                    return;
+                }
+            }
+            
+            hanchanScores[index] = newScores;
+            renderScoreDisplay();
+            closeModal();
+        };
+
         function getGameDataFromForm(onlyCompleted) {
             const basePoint = Number(document.getElementById('base-point').value);
             const returnPoint = Number(document.getElementById('return-point').value);
@@ -1170,29 +1464,19 @@
             const oka = ((returnPoint - basePoint) * 4) / 1000;
             
             const hanchanData = [];
-            const roundRows = document.getElementById('score-table-body').children;
-            for (let i = 0; i < roundRows.length; i++) {
-                const row = roundRows[i];
-                const inputs = row.querySelectorAll('.score-input');
-                const scores = {};
-                let total = 0;
-                let isComplete = true;
-                inputs.forEach(input => {
-                    if (input.value.trim() === '') {
-                        isComplete = false;
-                    }
-                    const score = Number(input.value) || 0;
-                    scores[input.dataset.playerId] = score;
-                    total += score;
-                });
-
+            
+            for (let i = 0; i < hanchanScores.length; i++) {
+                const scores = hanchanScores[i];
+                const isComplete = Object.values(scores).every(s => s !== null && s !== '');
+                
                 if (!isComplete) {
                     if (onlyCompleted) continue;
-                    return { error: `半荘 #${i+1} の全ての素点を入力してください。` };
+                    return { error: `半荘 #${i + 1} の全ての素点を入力してください。` };
                 }
 
+                const total = Object.values(scores).reduce((sum, score) => sum + Number(score), 0);
                 if (Math.round(total) !== basePoint * 4) {
-                    return { error: `半荘 #${i+1} の合計点が ${basePoint*4} になっていません。(現在: ${total})` };
+                    return { error: `半荘 #${i + 1} の合計点が ${basePoint*4} になっていません。(現在: ${total})` };
                 }
                 hanchanData.push({ rawScores: scores });
             }
@@ -1205,37 +1489,7 @@
             selectedPlayers.forEach(p => totalPoints[p.id] = 0);
 
             hanchanData.forEach(hanchan => {
-                const scoreGroups = {};
-                Object.entries(hanchan.rawScores).forEach(([playerId, score]) => {
-                    if (!scoreGroups[score]) scoreGroups[score] = [];
-                    scoreGroups[score].push(playerId);
-                });
-
-                const sortedScores = Object.keys(scoreGroups).map(Number).sort((a, b) => b - a);
-                
-                let rankCursor = 0;
-                const points = {};
-
-                sortedScores.forEach(score => {
-                    const playersInGroup = scoreGroups[score];
-                    const groupSize = playersInGroup.length;
-                    
-                    const umaSlice = uma.slice(rankCursor, rankCursor + groupSize);
-                    const totalUma = umaSlice.reduce((a, b) => a + b, 0);
-                    const sharedUma = totalUma / groupSize;
-                    
-                    let sharedOka = 0;
-                    if (rankCursor === 0) {
-                        sharedOka = oka / groupSize;
-                    }
-
-                    playersInGroup.forEach(playerId => {
-                        const pointWithoutUma = (Number(score) - returnPoint) / 1000;
-                        points[playerId] = pointWithoutUma + sharedUma + sharedOka;
-                    });
-                    rankCursor += groupSize;
-                });
-                
+                const { points } = calculateHanchanRanksAndPoints(hanchan.rawScores);
                 hanchan.points = points;
                 Object.keys(points).forEach(playerId => {
                     totalPoints[playerId] += points[playerId];
@@ -1255,20 +1509,8 @@
                 uma2: document.getElementById('uma-2').value,
                 uma3: document.getElementById('uma-3').value,
                 uma4: document.getElementById('uma-4').value,
-                scores: []
+                scores: hanchanScores
             };
-
-            const roundRows = document.getElementById('score-table-body').children;
-            for (let i = 0; i < roundRows.length; i++) {
-                const row = roundRows[i];
-                const inputs = row.querySelectorAll('.score-input');
-                const scores = {};
-                inputs.forEach(input => {
-                    scores[input.dataset.playerId] = input.value;
-                });
-                gameData.scores.push(scores);
-            }
-
             localStorage.setItem('edogawa-m-league-partial', JSON.stringify(gameData));
             showModalMessage("途中データを保存しました！");
         };
@@ -1277,7 +1519,7 @@
             const savedData = localStorage.getItem('edogawa-m-league-partial');
             if (savedData) {
                 const data = JSON.parse(savedData);
-                if (data.selectedPlayers.length === 4) {
+                if (data.selectedPlayers && data.selectedPlayers.length === 4) {
                     selectedPlayers = data.selectedPlayers;
                     renderPlayerSelection();
                     document.getElementById('to-step2-btn').disabled = false;
@@ -1296,38 +1538,17 @@
                     lockUnlockStep(1, true);
                     lockUnlockStep(2, true);
 
-                    setupScoreTableFromSavedData(data.scores);
+                    hanchanScores = data.scores || [];
+                    if (hanchanScores.length === 0) {
+                        addHanchan();
+                    } else {
+                        renderScoreDisplay();
+                    }
 
                     showModalMessage("保存されたデータを読み込みました。");
                 }
             }
         }
-        
-        function setupScoreTableFromSavedData(scores) {
-            const head = document.getElementById('score-table-head');
-            const body = document.getElementById('score-table-body');
-            head.innerHTML = `<tr class="bg-gray-900"><th class="p-2 text-left">#</th>${selectedPlayers.map(p => `<th class="p-2 text-left">${p.name}</th>`).join('')}<th class="p-2 text-left">Σ</th><th></th></tr>`;
-            body.innerHTML = '';
-            
-            scores.forEach((hanchanScores, roundNum) => {
-                const tr = document.createElement('tr');
-                tr.id = `round-${roundNum + 1}`;
-                tr.className = 'border-b border-gray-700';
-                
-                let rowHtml = `<td class="p-2 font-semibold">#${roundNum + 1}</td>`;
-                let total = 0;
-                selectedPlayers.forEach(p => {
-                    const score = hanchanScores[p.id] || '';
-                    rowHtml += `<td class="p-2"><input type="text" inputmode="numeric" class="score-input w-full rounded-md sm:text-sm" data-player-id="${p.id}" value="${score}" onchange="updateRoundTotal(${roundNum + 1})"></td>`;
-                    total += Number(score) || 0;
-                });
-                
-                rowHtml += `<td class="p-2 font-semibold" id="total-${roundNum + 1}">${total.toLocaleString()}</td><td class="p-2 text-center"><button onclick="deleteHanchan('round-${roundNum + 1}')" class="text-red-400 hover:text-red-600"><i class="fas fa-times-circle"></i></button></td>`;
-                tr.innerHTML = rowHtml;
-                body.appendChild(tr);
-            });
-        }
-
 
         window.showCurrentPtStatus = () => {
             const gameData = getGameDataFromForm(true); // only completed
@@ -1363,7 +1584,7 @@
                 return;
             }
 
-            const gameData = getGameDataFromForm(false); // all must be completed
+            const gameData = getGameDataFromForm(false);
             if (gameData.error) {
                 showModalMessage(gameData.error);
                 return;
@@ -1510,7 +1731,7 @@
             lockUnlockStep(2, true);
             const step3 = document.getElementById('step3-score-input');
             step3.classList.remove('hidden');
-            setupScoreTable();
+            setupScoreDisplay();
             step3.scrollIntoView({ behavior: 'smooth', block: 'center' });
         };
 
@@ -1562,71 +1783,9 @@
             renderPlayerSelection();
         };
 
-        const setupScoreTable = () => {
-            document.getElementById('score-table-head').innerHTML = `<tr class="bg-gray-900"><th class="p-2 text-left">#</th>${selectedPlayers.map(p => `<th class="p-2 text-left">${p.name}</th>`).join('')}<th class="p-2 text-left">Σ</th><th></th></tr>`;
-            document.getElementById('score-table-body').innerHTML = '';
-            addHanchan();
-        };
-        window.addHanchan = () => {
-            const body = document.getElementById('score-table-body');
-            const roundNum = body.children.length + 1;
-            const tr = document.createElement('tr');
-            tr.id = `round-${roundNum}`;
-            tr.className = 'border-b border-gray-700';
-            tr.innerHTML = `<td class="p-2 font-semibold">#${roundNum}</td>${selectedPlayers.map(p => `<td class="p-2"><input type="text" inputmode="numeric" class="score-input w-full rounded-md sm:text-sm" data-player-id="${p.id}" onchange="updateRoundTotal(${roundNum})"></td>`).join('')}<td class="p-2 font-semibold" id="total-${roundNum}">0</td><td class="p-2 text-center"><button onclick="deleteHanchan('round-${roundNum}')" class="text-red-400 hover:text-red-600"><i class="fas fa-times-circle"></i></button></td>`;
-            body.appendChild(tr);
-            tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        };
-        
-        window.deleteHanchan = (rowId) => {
-            document.getElementById(rowId)?.remove();
-            renumberHanchans();
-        };
-
-        function renumberHanchans() {
-            const rows = document.getElementById('score-table-body').children;
-            Array.from(rows).forEach((row, index) => {
-                const roundNum = index + 1;
-                row.id = `round-${roundNum}`;
-                row.querySelector('td:first-child').textContent = `#${roundNum}`;
-                row.querySelector('button').setAttribute('onclick', `deleteHanchan('round-${roundNum}')`);
-                row.querySelectorAll('input').forEach(input => {
-                    input.setAttribute('onchange', `updateRoundTotal(${roundNum})`);
-                });
-            });
-        }
-
-        window.updateRoundTotal = (roundNum) => {
-            const roundRow = document.getElementById(`round-${roundNum}`);
-            const inputs = Array.from(roundRow.querySelectorAll('.score-input'));
-            let total = 0;
-            let emptyInput = null;
-            let filledCount = 0;
-            
-            inputs.forEach(input => {
-                if (input.value.trim() !== '' && input.value.trim() !== '-') {
-                    total += Number(input.value);
-                    filledCount++;
-                } else {
-                    emptyInput = input;
-                }
-            });
-
-            if (filledCount === 3 && emptyInput) {
-                const basePoint = Number(document.getElementById('base-point').value);
-                const targetTotal = basePoint * 4;
-                const lastScore = targetTotal - total;
-                emptyInput.value = lastScore;
-                total += lastScore;
-            }
-
-            const totalCell = document.getElementById(`total-${roundNum}`);
-            totalCell.textContent = total.toLocaleString();
-            const basePoint = Number(document.getElementById('base-point').value);
-            totalCell.classList.toggle('text-red-500', Math.round(total) !== basePoint * 4);
-        };
         const resetGame = () => {
             selectedPlayers = [];
+            hanchanScores = [];
             renderGameTab();
             changeTab('game');
         };
