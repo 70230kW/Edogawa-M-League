@@ -120,20 +120,26 @@
         .text-rank-1 { color: var(--accent-green); }
         .text-rank-4 { color: var(--accent-red); }
         .font-m-gothic { font-family: '"MS PGothic", "ＭＳ Ｐゴシック", sans-serif'; }
+        
+        /* Sticky columns for scrollable tables */
         .sticky-col-1 { position: sticky; left: 0; z-index: 1; }
-        .sticky-col-2 { position: sticky; left: 56px; z-index: 1; }
+        .sticky-col-2 { position: sticky; left: 56px; z-index: 1; } /* Adjust this value based on the width of the first column */
+        
+        /* Ensure sticky headers and columns have a solid background */
         .leaderboard-table th, .leaderboard-table td { background-color: var(--primary); }
         .leaderboard-table thead th { z-index: 2; }
+
+        /* Hide scrollbar utility */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="text-gray-200">
 
-    <div id="app" class="container mx-auto p-4 max-w-7xl">
-        <header class="cyber-card p-6 mb-6">
-            <h1 class="cyber-header text-3xl sm:text-4xl font-bold text-center glowing-text text-blue-400 whitespace-nowrap">
-                <i class="fa-solid fa-person-rifle mr-3"></i> Edogawa M<br>League
+    <div id="app" class="container mx-auto p-2 sm:p-4 max-w-7xl">
+        <header class="cyber-card p-4 sm:p-6 mb-6">
+            <h1 class="cyber-header text-2xl sm:text-4xl font-bold text-center glowing-text text-blue-400">
+                <i class="fa-solid fa-person-rifle mr-2 sm:mr-3"></i>Edogawa M League
             </h1>
             <p id="auth-status" class="text-center text-xs text-gray-500 mt-2">Initializing System...</p>
         </header>
@@ -141,10 +147,10 @@
         <!-- タブナビゲーション -->
         <div class="mb-6">
             <div class="border-b border-gray-700">
-                <nav class="-mb-px flex space-x-6 overflow-x-auto no-scrollbar" aria-label="Tabs">
+                <nav class="-mb-px flex space-x-4 sm:space-x-6 overflow-x-auto no-scrollbar" aria-label="Tabs">
                     <button onclick="changeTab('game')" class="tab-btn active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">対局</button>
                     <button onclick="changeTab('leaderboard')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">順位表</button>
-                    <button onclick="changeTab('data-analysis')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">データ分析（開発中）</button>
+                    <button onclick="changeTab('data-analysis')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">データ分析</button>
                     <button onclick="changeTab('personal-stats')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">個人成績</button>
                     <button onclick="changeTab('history')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">対局履歴</button>
                     <button onclick="changeTab('history-raw')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">詳細履歴(素点)</button>
@@ -157,19 +163,19 @@
         <!-- コンテンツエリア -->
         <main id="main-content">
             <div id="game-tab" class="space-y-6"></div>
-            <div id="leaderboard-tab" class="hidden cyber-card p-6"></div>
+            <div id="leaderboard-tab" class="hidden cyber-card p-2 sm:p-6"></div>
             <div id="data-analysis-tab" class="hidden"></div>
-            <div id="personal-stats-tab" class="hidden cyber-card p-6"></div>
-            <div id="history-tab" class="hidden cyber-card p-6"></div>
-            <div id="history-raw-tab" class="hidden cyber-card p-6"></div>
-            <div id="history-pt-tab" class="hidden cyber-card p-6"></div>
-            <div id="users-tab" class="hidden cyber-card p-6"></div>
+            <div id="personal-stats-tab" class="hidden cyber-card p-2 sm:p-6"></div>
+            <div id="history-tab" class="hidden cyber-card p-2 sm:p-6"></div>
+            <div id="history-raw-tab" class="hidden cyber-card p-2 sm:p-6"></div>
+            <div id="history-pt-tab" class="hidden cyber-card p-2 sm:p-6"></div>
+            <div id="users-tab" class="hidden cyber-card p-2 sm:p-6"></div>
         </main>
     </div>
 
     <!-- モーダル (汎用) -->
     <div id="modal" class="fixed inset-0 z-50 flex items-center justify-center hidden modal-backdrop">
-        <div id="modal-content" class="cyber-card p-6 rounded-lg w-11/12 max-w-4xl max-h-[90vh] overflow-y-auto"></div>
+        <div id="modal-content" class="cyber-card p-4 sm:p-6 rounded-lg w-11/12 max-w-4xl max-h-[90vh] overflow-y-auto"></div>
     </div>
 
     <!-- Firebase SDK -->
@@ -357,7 +363,6 @@
             if (tabName === 'data-analysis') {
                 updateDataAnalysisCharts();
             } else if (tabName === 'game') {
-                // 素点入力画面に戻った際にlocalStorageからデータを読み込む
                 loadSavedGameData();
             }
         };
@@ -365,14 +370,14 @@
         function renderGameTab() {
             const container = document.getElementById('game-tab');
             container.innerHTML = `
-                <div id="step1-player-selection" class="cyber-card p-6">
+                <div id="step1-player-selection" class="cyber-card p-4 sm:p-6">
                     <h2 class="cyber-header text-xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">STEP 1: 雀士選択</h2>
                     <div id="player-list-for-selection" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4"></div>
                     <div class="flex justify-end">
                         <button id="to-step2-btn" onclick="moveToStep2()" class="cyber-btn px-6 py-2 rounded-lg" disabled>進む <i class="fas fa-arrow-right ml-2"></i></button>
                     </div>
                 </div>
-                <div id="step2-rule-settings" class="cyber-card p-6 hidden">
+                <div id="step2-rule-settings" class="cyber-card p-4 sm:p-6 hidden">
                     <h2 class="cyber-header text-xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">STEP 2: ルール選択</h2>
                     <div class="space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -381,14 +386,14 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-400">順位ウマ</label>
-                            <div class="grid grid-cols-4 gap-2 mt-1">
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1">
                                 <input type="number" id="uma-1" placeholder="1位" value="30" class="w-full rounded-md shadow-sm sm:text-sm">
                                 <input type="number" id="uma-2" placeholder="2位" value="10" class="w-full rounded-md shadow-sm sm:text-sm">
                                 <input type="number" id="uma-3" placeholder="3位" value="-10" class="w-full rounded-md shadow-sm sm:text-sm">
                                 <input type="number" id="uma-4" placeholder="4位" value="-30" class="w-full rounded-md shadow-sm sm:text-sm">
                             </div>
                         </div>
-                        <div class="flex items-center justify-between">
+                        <div class="flex flex-wrap items-center justify-between gap-4">
                             <button onclick="setMLeagueRules()" class="cyber-btn cyber-btn-green px-4 py-2 rounded-lg"><i class="fas fa-star mr-2"></i>Mリーグルール</button>
                             <div class="text-right"><p class="text-sm text-gray-400">オカ: <span id="oka-display" class="font-bold text-white">20</span></p></div>
                         </div>
@@ -398,7 +403,7 @@
                         <button onclick="moveToStep3()" class="cyber-btn px-6 py-2 rounded-lg">進む <i class="fas fa-arrow-right ml-2"></i></button>
                     </div>
                 </div>
-                <div id="step3-score-input" class="cyber-card p-6 hidden">
+                <div id="step3-score-input" class="cyber-card p-4 sm:p-6 hidden">
                      <h2 class="cyber-header text-xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">STEP 3: 素点入力</h2>
                      <div class="mb-4">
                          <label for="game-date" class="block text-sm font-medium text-gray-400 mb-1">対局日</label>
@@ -408,12 +413,12 @@
                          </div>
                      </div>
                      <div class="overflow-x-auto"><table class="min-w-full"><thead id="score-table-head"></thead><tbody id="score-table-body"></tbody></table></div>
-                     <div class="flex justify-between items-center mt-4 flex-wrap gap-2">
+                     <div class="flex flex-col sm:flex-row justify-between items-center mt-4 flex-wrap gap-2">
                         <div class="flex gap-2">
                             <button onclick="addHanchan()" class="cyber-btn px-4 py-2 rounded-lg"><i class="fas fa-plus mr-2"></i>半荘追加</button>
                             <button onclick="savePartialData()" class="cyber-btn cyber-btn-green px-4 py-2 rounded-lg"><i class="fas fa-floppy-disk mr-2"></i>途中保存</button>
                         </div>
-                        <button onclick="showCurrentPtStatus()" class="cyber-btn px-4 py-2 rounded-lg"><i class="fas fa-calculator mr-2"></i>現在のPT状況</button>
+                        <button onclick="showCurrentPtStatus()" class="cyber-btn px-4 py-2 rounded-lg order-first sm:order-none w-full sm:w-auto"><i class="fas fa-calculator mr-2"></i>現在のPT状況</button>
                         <div class="flex gap-2">
                             <button onclick="backToStep2()" class="cyber-btn px-6 py-2 rounded-lg"><i class="fas fa-arrow-left mr-2"></i>戻る</button>
                             <button onclick="calculateAndSave()" class="cyber-btn cyber-btn-yellow px-6 py-2 rounded-lg"><i class="fas fa-save mr-2"></i>Pt変換して保存</button>
@@ -431,10 +436,10 @@
             const yearOptions = getGameYears().map(year => `<option value="${year}">${year}年</option>`).join('');
 
             container.innerHTML = `
-                <div class="flex justify-between items-center mb-4">
+                <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
                     <h2 class="cyber-header text-2xl font-bold text-blue-400">順位表</h2>
                     <div class="flex items-center gap-2">
-                        <label for="leaderboard-period-select" class="text-sm">期間:</label>
+                        <label for="leaderboard-period-select" class="text-sm whitespace-nowrap">期間:</label>
                         <select id="leaderboard-period-select" onchange="updateLeaderboard()" class="rounded-md p-1">
                             <option value="all">全期間</option>
                             ${yearOptions}
@@ -445,8 +450,8 @@
                     <table class="min-w-full divide-y divide-gray-700 leaderboard-table">
                         <thead class="bg-gray-900 text-xs md:text-sm font-medium text-gray-400 uppercase tracking-wider">
                             <tr>
-                                <th class="px-2 md:px-4 py-3 text-right sticky-col-1 w-14 whitespace-nowrap">順位</th>
-                                <th class="px-2 md:px-4 py-3 text-left sticky-col-2 whitespace-nowrap">雀士</th>
+                                <th class="px-2 py-3 text-right sticky-col-1 w-14 whitespace-nowrap">順位</th>
+                                <th class="px-2 py-3 text-left sticky-col-2 whitespace-nowrap">雀士</th>
                                 <th class="px-2 md:px-4 py-3 text-right whitespace-nowrap">合計Pt</th>
                                 <th class="px-2 md:px-4 py-3 text-right whitespace-nowrap">半荘数</th>
                                 <th class="px-2 md:px-4 py-3 text-right whitespace-nowrap">平均着順</th>
@@ -470,9 +475,9 @@
             const container = document.getElementById('users-tab');
             container.innerHTML = `
                 <h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">雀士管理</h2>
-                <div class="flex gap-4 mb-4">
+                <div class="flex flex-col sm:flex-row gap-4 mb-4">
                     <input type="text" id="new-user-name" class="flex-grow rounded-md shadow-sm sm:text-sm" placeholder="新しい雀士名">
-                    <button onclick="addUser()" class="cyber-btn px-6 py-2 rounded-lg"><i class="fas fa-user-plus mr-2"></i>追加</button>
+                    <button onclick="addUser()" class="cyber-btn px-6 py-2 rounded-lg whitespace-nowrap"><i class="fas fa-user-plus mr-2"></i>追加</button>
                 </div>
                 <div id="user-list-management" class="space-y-2"></div>
             `;
@@ -483,7 +488,7 @@
             const container = document.getElementById('personal-stats-tab');
             const options = users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
             container.innerHTML = `
-                <div class="flex flex-wrap justify-between items-center mb-4">
+                <div class="flex flex-col sm:flex-row flex-wrap justify-between items-center mb-4 gap-4">
                     <h2 class="cyber-header text-2xl font-bold pb-2 text-blue-400">個人成績</h2>
                     <div class="flex items-center gap-2">
                         <label for="personal-stats-player-select" class="text-sm text-gray-400">雀士:</label>
@@ -512,15 +517,15 @@
                 <div class="space-y-6">
                     <h2 class="cyber-header text-2xl font-bold text-blue-400 border-b border-gray-700 pb-2">データ分析</h2>
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div class="cyber-card p-6">
+                        <div class="cyber-card p-4 sm:p-6">
                             <h3 class="cyber-header text-xl font-bold mb-4 text-center">雀士別1着割合</h3>
                             <div class="w-full h-64 mx-auto"><canvas id="league-rank-pie-chart"></canvas></div>
                         </div>
-                        <div class="cyber-card p-6">
+                        <div class="cyber-card p-4 sm:p-6">
                             <h3 class="cyber-header text-xl font-bold mb-4 text-center">ポイント推移</h3>
                             <div class="w-full h-64 mx-auto"><canvas id="point-history-chart"></canvas></div>
                         </div>
-                        <div class="cyber-card p-6 lg:col-span-2">
+                        <div class="cyber-card p-4 sm:p-6 lg:col-span-2">
                             <h3 class="cyber-header text-xl font-bold mb-4 text-center">平均素点 vs 平均着順</h3>
                             <div class="w-full h-80 mx-auto"><canvas id="score-rank-scatter-chart"></canvas></div>
                         </div>
@@ -629,8 +634,8 @@
                 
                 return `
                     <tr class="hover:bg-gray-800 font-m-gothic text-xs md:text-sm">
-                        <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right sticky-col-1">${index + 1}</td>
-                        <td class="px-2 md:px-4 py-4 whitespace-nowrap text-left font-medium text-blue-400 cursor-pointer hover:underline sticky-col-2" onclick="showPlayerStats('${user.id}')">${user.name}</td>
+                        <td class="px-2 py-4 whitespace-nowrap text-right sticky-col-1">${index + 1}</td>
+                        <td class="px-2 py-4 whitespace-nowrap text-left font-medium text-blue-400 cursor-pointer hover:underline sticky-col-2" onclick="showPlayerStats('${user.id}')">${user.name}</td>
                         <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right font-bold ${user.totalPoints >= 0 ? 'text-green-400' : 'text-red-400'}">${(user.totalPoints).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</td>
                         <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right">${user.totalHanchans.toLocaleString()}</td>
                         <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('avgRank', user.avgRank)}">${user.avgRank.toFixed(2)}</td>
@@ -660,16 +665,18 @@
                     const winner = Object.entries(game.totalPoints).sort((a, b) => b[1] - a[1])[0];
                     const winnerUser = users.find(u => u.id === winner[0]);
                     return `
-                        <div class="p-4 rounded-lg bg-gray-900 border border-gray-700 flex justify-between items-center">
+                        <div class="p-4 rounded-lg bg-gray-900 border border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                             <div class="cursor-pointer flex-grow" onclick="showGameDetails('${game.id}')">
                                 <p class="font-bold text-lg">${date}</p>
                                 <p class="text-sm text-gray-400">${game.playerNames.join(', ')}</p>
                             </div>
-                            <div class="text-right mr-4 cursor-pointer" onclick="showGameDetails('${game.id}')">
-                                <p class="text-sm">WINNER</p>
-                                <p class="font-bold text-green-400">${winnerUser ? winnerUser.name : 'N/A'} (+${winner[1].toFixed(1)})</p>
+                            <div class="flex justify-between w-full sm:w-auto">
+                                <div class="text-left sm:text-right mr-4 cursor-pointer" onclick="showGameDetails('${game.id}')">
+                                    <p class="text-sm">WINNER</p>
+                                    <p class="font-bold text-green-400">${winnerUser ? winnerUser.name : 'N/A'} (+${winner[1].toFixed(1)})</p>
+                                </div>
+                                <button onclick="confirmDeleteGame('${game.id}', '${date}')" class="text-red-500 hover:text-red-400 text-lg p-2 self-center"><i class="fas fa-trash-alt"></i></button>
                             </div>
-                            <button onclick="confirmDeleteGame('${game.id}', '${date}')" class="text-red-500 hover:text-red-400 text-lg p-2"><i class="fas fa-trash-alt"></i></button>
                         </div>
                     `;
                 }).join('');
@@ -699,8 +706,8 @@
                 let tableHtml = `<table class="min-w-full divide-y divide-gray-700 font-m-gothic text-xs md:text-sm">
                     <thead class="bg-gray-900 text-xs md:text-sm font-medium text-gray-400 uppercase tracking-wider">
                         <tr>
-                            <th class="px-2 md:px-4 py-3 text-left whitespace-nowrap">日時</th>
-                            ${users.map(u => `<th class="px-2 md:px-4 py-3 text-right whitespace-nowrap">${u.name}</th>`).join('')}
+                            <th class="px-2 py-3 text-left whitespace-nowrap">日時</th>
+                            ${users.map(u => `<th class="px-2 py-3 text-right whitespace-nowrap">${u.name}</th>`).join('')}
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-700">`;
@@ -730,16 +737,16 @@
                         rankCursor += playersInGroup.length;
                     });
                     
-                    tableHtml += `<tr class="${borderClass}"><td class="px-2 md:px-4 py-2 whitespace-nowrap">${hanchan.date} (#${hanchan.hanchanNum})</td>`;
+                    tableHtml += `<tr class="${borderClass}"><td class="px-2 py-2 whitespace-nowrap">${hanchan.date} (#${hanchan.hanchanNum})</td>`;
                     users.forEach(user => {
                         if (scores[user.id] !== undefined) {
                             const rank = ranks[user.id];
                             let rankClass = '';
                             if (rank === 1) rankClass = 'text-rank-1';
                             if (rank === 4) rankClass = 'text-rank-4';
-                            tableHtml += `<td class="px-2 md:px-4 py-2 text-right ${rankClass}">${dataType === 'points' ? scores[user.id].toFixed(1) : scores[user.id].toLocaleString()}</td>`;
+                            tableHtml += `<td class="px-2 py-2 text-right ${rankClass}">${dataType === 'points' ? scores[user.id].toFixed(1) : scores[user.id].toLocaleString()}</td>`;
                         } else {
-                            tableHtml += `<td class="px-2 md:px-4 py-2 text-right text-gray-600">-</td>`;
+                            tableHtml += `<td class="px-2 py-2 text-right text-gray-600">-</td>`;
                         }
                     });
                     tableHtml += `</tr>`;
@@ -784,16 +791,16 @@
                     <div id="comparison-checkboxes" class="flex flex-wrap">${comparisonOptions}</div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="cyber-card p-6">
+                    <div class="cyber-card p-4 sm:p-6">
                         <h3 class="cyber-header text-xl font-bold mb-4 text-center">順位分布</h3>
                         <div class="w-full h-64 mx-auto"><canvas id="rank-chart"></canvas></div>
                     </div>
-                    <div class="cyber-card p-6">
+                    <div class="cyber-card p-4 sm:p-6">
                         <h3 class="cyber-header text-xl font-bold mb-4 text-center">ポイント推移</h3>
                         <div class="w-full h-64 mx-auto"><canvas id="point-history-chart"></canvas></div>
                     </div>
                 </div>
-                <div id="player-history-container" class="cyber-card p-6"></div>
+                <div id="player-history-container" class="cyber-card p-4 sm:p-6"></div>
             `;
             
             renderDetailedStats(playerId);
@@ -871,25 +878,26 @@
             }
 
             let tableHtml = `<h3 class="cyber-header text-xl font-bold mb-4 text-center">対局履歴</h3>
-                <table class="min-w-full divide-y divide-gray-700 text-sm">
-                    <thead class="bg-gray-900"><tr>
-                        <th class="px-4 py-2 text-left">日時</th>
-                        <th class="px-4 py-2 text-right">着順</th>
-                        <th class="px-4 py-2 text-right">素点</th>
-                        <th class="px-4 py-2 text-right">ポイント</th>
-                    </tr></thead>
-                    <tbody class="divide-y divide-gray-700">`;
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-700 text-sm">
+                        <thead class="bg-gray-900"><tr>
+                            <th class="px-4 py-2 text-left">日時</th>
+                            <th class="px-4 py-2 text-right">着順</th>
+                            <th class="px-4 py-2 text-right">素点</th>
+                            <th class="px-4 py-2 text-right">ポイント</th>
+                        </tr></thead>
+                        <tbody class="divide-y divide-gray-700">`;
             
             playerHanchans.reverse().forEach(h => {
                 tableHtml += `<tr>
-                    <td class="px-4 py-2">${h.date}</td>
+                    <td class="px-4 py-2 whitespace-nowrap">${h.date}</td>
                     <td class="px-4 py-2 text-right">${h.rank}</td>
                     <td class="px-4 py-2 text-right">${h.rawScore.toLocaleString()}</td>
                     <td class="px-4 py-2 text-right ${h.point >= 0 ? 'text-green-400' : 'text-red-400'}">${h.point.toFixed(1)}</td>
                 </tr>`;
             });
 
-            tableHtml += `</tbody></table>`;
+            tableHtml += `</tbody></table></div>`;
             container.innerHTML = tableHtml;
         }
 
@@ -953,7 +961,6 @@
 
             const allStats = calculateAllPlayerStats(games);
             const rankedUsers = Object.values(allStats).filter(u => u.totalHanchans > 0).sort((a,b) => b.totalPoints - a.totalPoints);
-            // More diverse color palette
             const colors = [
                 '#58a6ff', '#52c569', '#f5655f', '#E2FF08', '#e0aaff', '#9bf6ff',
                 '#ffb700', '#00ffc8', '#ff73a9', '#66ff66', '#a9c5ff', '#ffc107',
@@ -981,9 +988,7 @@
                             callbacks: {
                                 label: function(context) {
                                     let label = context.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
+                                    if (label) { label += ': '; }
                                     const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                     const value = context.raw;
                                     const percentage = total > 0 ? (value / total * 100).toFixed(1) + '%' : '0%';
@@ -1018,8 +1023,8 @@
                     label: player.name,
                     data: data,
                     borderColor: colors[index % colors.length],
-                    backgroundColor: colors[index % colors.length] + '33', // Use a slightly transparent version for fill
-                    fill: false, // Set to false for line charts
+                    backgroundColor: colors[index % colors.length] + '33',
+                    fill: false,
                     tension: 0.1
                 }
             });
@@ -1038,14 +1043,8 @@
                         tooltip: { mode: 'index', intersect: false }
                     }, 
                     scales: { 
-                        x: { 
-                            ticks: { color: '#8b949e' }, 
-                            grid: { color: '#30363d' } 
-                        }, 
-                        y: { 
-                            ticks: { color: '#8b949e' }, 
-                            grid: { color: '#30363d' } 
-                        } 
+                        x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } }, 
+                        y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } } 
                     } 
                 }
             });
@@ -1246,7 +1245,6 @@
             return { hanchanData, totalPoints, settings: { basePoint, returnPoint, uma } };
         }
         
-        // Save partial game data to localStorage
         window.savePartialData = () => {
             const gameData = {
                 selectedPlayers: selectedPlayers,
@@ -1275,7 +1273,6 @@
             showModalMessage("途中データを保存しました！");
         };
 
-        // Load partial game data from localStorage
         function loadSavedGameData() {
             const savedData = localStorage.getItem('edogawa-m-league-partial');
             if (savedData) {
@@ -1285,11 +1282,9 @@
                     renderPlayerSelection();
                     document.getElementById('to-step2-btn').disabled = false;
                     
-                    // Show step 2 and 3
                     document.getElementById('step2-rule-settings').classList.remove('hidden');
                     document.getElementById('step3-score-input').classList.remove('hidden');
                     
-                    // Populate rule settings
                     document.getElementById('base-point').value = data.basePoint;
                     document.getElementById('return-point').value = data.returnPoint;
                     document.getElementById('uma-1').value = data.uma1;
@@ -1298,14 +1293,11 @@
                     document.getElementById('uma-4').value = data.uma4;
                     updateOkaDisplay();
                     
-                    // Lock steps 1 & 2
                     lockUnlockStep(1, true);
                     lockUnlockStep(2, true);
 
-                    // Populate score table
                     setupScoreTableFromSavedData(data.scores);
 
-                    // Show message
                     showModalMessage("保存されたデータを読み込みました。");
                 }
             }
@@ -1389,7 +1381,7 @@
                 });
                 showModalMessage("対局結果を保存しました！");
                 resetGame();
-                localStorage.removeItem('edogawa-m-league-partial'); // clear saved data on successful save
+                localStorage.removeItem('edogawa-m-league-partial');
             } catch (error) { console.error("Error saving game: ", error); showModalMessage("データの保存に失敗しました。"); }
         };
 
@@ -1443,7 +1435,6 @@
             const createTableBody = (dataType) => {
                 return game.scores.map((hanchan, index) => {
                     const scores = hanchan[dataType];
-                    
                     const scoreGroups = {};
                     Object.entries(hanchan.rawScores).forEach(([pId, score]) => {
                         if (!scoreGroups[score]) scoreGroups[score] = [];
@@ -1481,15 +1472,15 @@
                 <div class="space-y-6">
                     <div>
                         <h4 class="font-bold mb-2">着順</h4>
-                        <table class="min-w-full text-sm"><thead><tr><th class="px-2 py-2 text-center">#</th>${playerHeaders}</tr></thead><tbody class="divide-y divide-gray-700">${ranksBody}</tbody></table>
+                        <div class="overflow-x-auto"><table class="min-w-full text-sm"><thead><tr><th class="px-2 py-2 text-center">#</th>${playerHeaders}</tr></thead><tbody class="divide-y divide-gray-700">${ranksBody}</tbody></table></div>
                     </div>
                     <div>
                         <h4 class="font-bold mb-2">ポイント</h4>
-                        <table class="min-w-full text-sm"><thead><tr><th class="px-2 py-2 text-center">#</th>${playerHeaders}</tr></thead><tbody class="divide-y divide-gray-700">${pointsBody}</tbody></table>
+                        <div class="overflow-x-auto"><table class="min-w-full text-sm"><thead><tr><th class="px-2 py-2 text-center">#</th>${playerHeaders}</tr></thead><tbody class="divide-y divide-gray-700">${pointsBody}</tbody></table></div>
                     </div>
                     <div>
                         <h4 class="font-bold mb-2">素点</h4>
-                        <table class="min-w-full text-sm"><thead><tr><th class="px-2 py-2 text-center">#</th>${playerHeaders}</tr></thead><tbody class="divide-y divide-gray-700">${rawScoresBody}</tbody></table>
+                        <div class="overflow-x-auto"><table class="min-w-full text-sm"><thead><tr><th class="px-2 py-2 text-center">#</th>${playerHeaders}</tr></thead><tbody class="divide-y divide-gray-700">${rawScoresBody}</tbody></table></div>
                     </div>
                 </div>
                 <div class="flex justify-end mt-6"><button onclick="closeModal()" class="cyber-btn px-4 py-2 rounded-lg">閉じる</button></div>
@@ -1527,7 +1518,7 @@
             document.getElementById('step2-rule-settings').classList.add('hidden');
             lockUnlockStep(1, false);
             document.getElementById('step1-player-selection').scrollIntoView({ behavior: 'smooth', block: 'center' });
-            localStorage.removeItem('edogawa-m-league-partial'); // clear saved data on going back
+            localStorage.removeItem('edogawa-m-league-partial');
         };
 
         window.backToStep2 = () => {
