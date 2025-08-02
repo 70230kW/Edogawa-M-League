@@ -71,6 +71,16 @@
             color: var(--primary);
             box-shadow: 0 0 10px rgba(82, 197, 105, 0.5);
         }
+        .cyber-btn-red {
+            border-color: var(--accent-red);
+            color: var(--accent-red);
+            text-shadow: 0 0 5px var(--accent-red);
+        }
+        .cyber-btn-red:hover {
+            background-color: var(--accent-red);
+            color: var(--primary);
+            box-shadow: 0 0 10px var(--accent-red);
+        }
         .tab-btn.active {
             color: var(--accent-blue);
             border-bottom-color: var(--accent-blue);
@@ -347,6 +357,9 @@
 
             if (tabName === 'data-analysis') {
                 updateDataAnalysisCharts();
+            } else if (tabName === 'game') {
+                // 素点入力画面に戻った際にlocalStorageからデータを読み込む
+                loadSavedGameData();
             }
         };
 
@@ -397,7 +410,10 @@
                      </div>
                      <div class="overflow-x-auto"><table class="min-w-full"><thead id="score-table-head"></thead><tbody id="score-table-body"></tbody></table></div>
                      <div class="flex justify-between items-center mt-4 flex-wrap gap-2">
-                        <button onclick="addHanchan()" class="cyber-btn px-4 py-2 rounded-lg"><i class="fas fa-plus mr-2"></i>半荘追加</button>
+                        <div class="flex gap-2">
+                            <button onclick="addHanchan()" class="cyber-btn px-4 py-2 rounded-lg"><i class="fas fa-plus mr-2"></i>半荘追加</button>
+                            <button onclick="savePartialData()" class="cyber-btn cyber-btn-green px-4 py-2 rounded-lg"><i class="fas fa-floppy-disk mr-2"></i>途中保存</button>
+                        </div>
                         <button onclick="showCurrentPtStatus()" class="cyber-btn px-4 py-2 rounded-lg"><i class="fas fa-calculator mr-2"></i>現在のPT状況</button>
                         <div class="flex gap-2">
                             <button onclick="backToStep2()" class="cyber-btn px-6 py-2 rounded-lg"><i class="fas fa-arrow-left mr-2"></i>戻る</button>
@@ -886,7 +902,7 @@
             const mainPlayerData = getPlayerPointHistory(mainPlayerId);
             pointHistoryDatasets.push({
                 label: allStats[mainPlayerId].name,
-                data: mainPlayerData.map(d => d.cumulativePoints),
+                data: mainPlayerData.map(d => d.points),
                 borderColor: colors[0],
                 backgroundColor: colors[0] + '33',
                 fill: true, tension: 0.1
@@ -895,7 +911,7 @@
                 const playerData = getPlayerPointHistory(id);
                 pointHistoryDatasets.push({
                     label: allStats[id].name,
-                    data: playerData.map(d => d.cumulativePoints),
+                    data: playerData.map(d => d.points),
                     borderColor: colors[(index + 1) % colors.length],
                     backgroundColor: colors[(index + 1) % colors.length] + '33',
                     fill: true, tension: 0.1
@@ -905,7 +921,7 @@
             if (pointHistoryChart) pointHistoryChart.destroy();
             pointHistoryChart = new Chart(document.getElementById('point-history-chart').getContext('2d'), {
                 type: 'line',
-                data: { labels: mainPlayerData.map(d => d.gameNum), datasets: pointHistoryDatasets },
+                data: { labels: mainPlayerData.map(d => d.date), datasets: pointHistoryDatasets },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#c9d1d9' }}}, scales: { x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } }, y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } } } }
             });
 
@@ -1118,7 +1134,8 @@
                 showModalMessage("対局データの削除に失敗しました。");
             }
         };
-
+        
+        // --- Game Flow Functions ---
         function getGameDataFromForm(onlyCompleted) {
             const basePoint = Number(document.getElementById('base-point').value);
             const returnPoint = Number(document.getElementById('return-point').value);
@@ -1137,7 +1154,7 @@
                 let total = 0;
                 let isComplete = true;
                 inputs.forEach(input => {
-                    if (input.value.trim() === '' || input.value.trim() === '-') {
+                    if (input.value.trim() === '') {
                         isComplete = false;
                     }
                     const score = Number(input.value) || 0;
@@ -1203,6 +1220,97 @@
 
             return { hanchanData, totalPoints, settings: { basePoint, returnPoint, uma } };
         }
+        
+        // Save partial game data to localStorage
+        window.savePartialData = () => {
+            const gameData = {
+                selectedPlayers: selectedPlayers,
+                gameDate: document.getElementById('game-date').value,
+                basePoint: document.getElementById('base-point').value,
+                returnPoint: document.getElementById('return-point').value,
+                uma1: document.getElementById('uma-1').value,
+                uma2: document.getElementById('uma-2').value,
+                uma3: document.getElementById('uma-3').value,
+                uma4: document.getElementById('uma-4').value,
+                scores: []
+            };
+
+            const roundRows = document.getElementById('score-table-body').children;
+            for (let i = 0; i < roundRows.length; i++) {
+                const row = roundRows[i];
+                const inputs = row.querySelectorAll('.score-input');
+                const scores = {};
+                inputs.forEach(input => {
+                    scores[input.dataset.playerId] = input.value;
+                });
+                gameData.scores.push(scores);
+            }
+
+            localStorage.setItem('edogawa-m-league-partial', JSON.stringify(gameData));
+            showModalMessage("途中データを保存しました！");
+        };
+
+        // Load partial game data from localStorage
+        function loadSavedGameData() {
+            const savedData = localStorage.getItem('edogawa-m-league-partial');
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                if (data.selectedPlayers.length === 4) {
+                    selectedPlayers = data.selectedPlayers;
+                    renderPlayerSelection();
+                    document.getElementById('to-step2-btn').disabled = false;
+                    
+                    // Show step 2 and 3
+                    document.getElementById('step2-rule-settings').classList.remove('hidden');
+                    document.getElementById('step3-score-input').classList.remove('hidden');
+                    
+                    // Populate rule settings
+                    document.getElementById('base-point').value = data.basePoint;
+                    document.getElementById('return-point').value = data.returnPoint;
+                    document.getElementById('uma-1').value = data.uma1;
+                    document.getElementById('uma-2').value = data.uma2;
+                    document.getElementById('uma-3').value = data.uma3;
+                    document.getElementById('uma-4').value = data.uma4;
+                    updateOkaDisplay();
+                    
+                    // Lock steps 1 & 2
+                    lockUnlockStep(1, true);
+                    lockUnlockStep(2, true);
+
+                    // Populate score table
+                    setupScoreTableFromSavedData(data.scores);
+
+                    // Show message
+                    showModalMessage("保存されたデータを読み込みました。");
+                }
+            }
+        }
+        
+        function setupScoreTableFromSavedData(scores) {
+            const head = document.getElementById('score-table-head');
+            const body = document.getElementById('score-table-body');
+            head.innerHTML = `<tr class="bg-gray-900"><th class="p-2 text-left">#</th>${selectedPlayers.map(p => `<th class="p-2 text-left">${p.name}</th>`).join('')}<th class="p-2 text-left">Σ</th><th></th></tr>`;
+            body.innerHTML = '';
+            
+            scores.forEach((hanchanScores, roundNum) => {
+                const tr = document.createElement('tr');
+                tr.id = `round-${roundNum + 1}`;
+                tr.className = 'border-b border-gray-700';
+                
+                let rowHtml = `<td class="p-2 font-semibold">#${roundNum + 1}</td>`;
+                let total = 0;
+                selectedPlayers.forEach(p => {
+                    const score = hanchanScores[p.id] || '';
+                    rowHtml += `<td class="p-2"><input type="text" inputmode="numeric" class="score-input w-full rounded-md sm:text-sm" data-player-id="${p.id}" value="${score}" onchange="updateRoundTotal(${roundNum + 1})"></td>`;
+                    total += Number(score) || 0;
+                });
+                
+                rowHtml += `<td class="p-2 font-semibold" id="total-${roundNum + 1}">${total.toLocaleString()}</td><td class="p-2 text-center"><button onclick="deleteHanchan('round-${roundNum + 1}')" class="text-red-400 hover:text-red-600"><i class="fas fa-times-circle"></i></button></td>`;
+                tr.innerHTML = rowHtml;
+                body.appendChild(tr);
+            });
+        }
+
 
         window.showCurrentPtStatus = () => {
             const gameData = getGameDataFromForm(true); // only completed
@@ -1256,6 +1364,7 @@
                 });
                 showModalMessage("対局結果を保存しました！");
                 resetGame();
+                localStorage.removeItem('edogawa-m-league-partial'); // clear saved data on successful save
             } catch (error) { console.error("Error saving game: ", error); showModalMessage("データの保存に失敗しました。"); }
         };
 
@@ -1393,6 +1502,7 @@
             document.getElementById('step2-rule-settings').classList.add('hidden');
             lockUnlockStep(1, false);
             document.getElementById('step1-player-selection').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            localStorage.removeItem('edogawa-m-league-partial'); // clear saved data on going back
         };
 
         window.backToStep2 = () => {
