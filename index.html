@@ -1465,41 +1465,41 @@
             const scores = hanchanScores[index];
             
             const modalHtml = `
-                <div class="flex flex-col md:flex-row md:gap-6 h-full max-h-[85vh] md:max-h-none">
-                    <div class="flex-grow overflow-y-auto mb-4 md:mb-0 pr-2"> <!-- 入力エリア (左側/上側) -->
-                        <h3 class="cyber-header text-xl font-bold text-blue-400 mb-4">半荘 #${index + 1} スコア入力</h3>
-                        <div class="space-y-3">
-                            ${selectedPlayers.map(p => `
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-400">${p.name}</label>
-                                    <input type="text" id="modal-score-${p.id}" 
-                                           class="modal-score-input mt-1 block w-full rounded-md shadow-sm sm:text-lg p-3 text-right border-2 border-transparent" 
-                                           value="${scores[p.id] || ''}" 
-                                           onfocus="setActiveInput('modal-score-${p.id}')"
-                                           readonly>
-                                </div>
-                            `).join('')}
-                             <div>
-                                <label class="block text-sm font-medium text-gray-400">合計</label>
-                                <div id="modal-total-score" class="mt-1 block w-full rounded-md bg-gray-900 p-3 text-right sm:text-lg">0</div>
+                <h3 class="cyber-header text-xl font-bold text-blue-400 mb-4">半荘 #${index + 1} スコア入力</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- Score Inputs -->
+                    <div class="space-y-3">
+                        ${selectedPlayers.map(p => `
+                            <div>
+                                <label class="flex items-center gap-2 mb-1">
+                                    ${getPlayerPhotoHtml(p.id, 'w-8 h-8')}
+                                    <span class="text-sm font-medium text-gray-400">${p.name}</span>
+                                </label>
+                                <input type="text" id="modal-score-${p.id}" 
+                                       class="modal-score-input block w-full rounded-md shadow-sm sm:text-lg p-2 text-right border-2 border-transparent bg-gray-800" 
+                                       value="${scores[p.id] !== null ? scores[p.id] : ''}" 
+                                       onfocus="setActiveInput('modal-score-${p.id}')"
+                                       readonly>
                             </div>
+                        `).join('')}
+                         <div>
+                            <label class="block text-sm font-medium text-gray-400 mt-2">合計</label>
+                            <div id="modal-total-score" class="mt-1 block w-full rounded-md bg-gray-900 p-2 text-right sm:text-lg font-bold">0</div>
                         </div>
                     </div>
-
-                    <div class="flex-shrink-0 md:w-52 flex flex-col"> <!-- テンキーエリア (右側/下側) -->
-                        <div class="grid grid-cols-3 gap-2">
-                            ${[7, 8, 9, 4, 5, 6, 1, 2, 3, 0, '00', '000'].map(key => `
-                                <button onclick="keypadInput('${key}')" class="cyber-btn aspect-square text-2xl font-bold">${key}</button>
-                            `).join('')}
-                            <button onclick="keypadInput('マイナス')" class="cyber-btn aspect-square text-2xl font-bold">-</button>
-                            <button onclick="keypadInput('C')" class="cyber-btn-red aspect-square text-2xl font-bold">C</button>
-                            <button onclick="keypadInput('auto')" class="cyber-btn-green aspect-square text-xl font-bold">AUTO</button>
-                        </div>
-                        <div class="flex justify-end gap-4 mt-auto pt-4">
-                            <button onclick="closeModal()" class="cyber-btn px-4 py-2 rounded-lg">キャンセル</button>
-                            <button onclick="saveScoresFromModal(${index})" class="cyber-btn-yellow px-4 py-2 rounded-lg">保存</button>
-                        </div>
+                    <!-- Numeric Keypad -->
+                    <div class="grid grid-cols-3 gap-2">
+                        ${[7, 8, 9, 4, 5, 6, 1, 2, 3, 0, '00', '000'].map(key => `
+                            <button onclick="keypadInput('${key}')" class="cyber-btn aspect-square text-xl md:text-2xl font-bold">${key}</button>
+                        `).join('')}
+                        <button onclick="keypadInput('マイナス')" class="cyber-btn aspect-square text-xl md:text-2xl font-bold">-</button>
+                        <button onclick="keypadInput('C')" class="cyber-btn-red aspect-square text-xl md:text-2xl font-bold">C</button>
+                        <button onclick="keypadInput('auto')" class="cyber-btn-green aspect-square text-lg md:text-xl font-bold">AUTO</button>
                     </div>
+                </div>
+                <div class="flex justify-end gap-4 mt-6">
+                    <button onclick="closeModal()" class="cyber-btn px-4 py-2 rounded-lg">キャンセル</button>
+                    <button onclick="saveScoresFromModal(${index})" class="cyber-btn-yellow px-4 py-2 rounded-lg">保存</button>
                 </div>
             `;
             showModal(modalHtml);
@@ -1509,10 +1509,10 @@
         };
 
         window.setActiveInput = (inputId) => {
-            document.querySelectorAll('.modal-score-input').forEach(el => el.classList.remove('border-blue-500'));
+            document.querySelectorAll('.modal-score-input').forEach(el => el.classList.remove('border-blue-500', 'ring-2', 'ring-blue-500'));
             const activeEl = document.getElementById(inputId);
             if (activeEl) {
-                activeEl.classList.add('border-blue-500');
+                activeEl.classList.add('ring-2', 'ring-blue-500');
                 window.activeInputId = inputId;
             }
         };
@@ -1539,7 +1539,7 @@
             let total = 0;
             let filledCount = 0;
             document.querySelectorAll('.modal-score-input').forEach(input => {
-                if (input.value.trim() !== '') {
+                if (input.value.trim() !== '' && input.value.trim() !== '-') {
                     total += Number(input.value);
                     filledCount++;
                 }
@@ -1562,7 +1562,7 @@
             let emptyInput = null;
             let filledCount = 0;
             document.querySelectorAll('.modal-score-input').forEach(input => {
-                if (input.value.trim() !== '') {
+                if (input.value.trim() !== '' && input.value.trim() !== '-') {
                     total += Number(input.value);
                     filledCount++;
                 } else {
@@ -1585,7 +1585,7 @@
             selectedPlayers.forEach(p => {
                 const input = document.getElementById(`modal-score-${p.id}`);
                 const value = input.value;
-                if (value === '' || value === null) {
+                if (value === '' || value === null || value === '-') {
                     hasEmpty = true;
                     newScores[p.id] = null;
                 } else {
