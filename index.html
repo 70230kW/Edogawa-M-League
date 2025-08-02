@@ -187,7 +187,6 @@
         let rankChart = null;
         let pointHistoryChart = null;
         let leagueRankPieChart = null;
-        let topPlayersPointChart = null;
         let scoreRankScatterChart = null;
         
         // --- Firebase Config ---
@@ -518,8 +517,8 @@
                             <div class="w-full h-64 mx-auto"><canvas id="league-rank-pie-chart"></canvas></div>
                         </div>
                         <div class="cyber-card p-6">
-                            <h3 class="cyber-header text-xl font-bold mb-4 text-center">トップ雀士 ポイント推移</h3>
-                            <div class="w-full h-64 mx-auto"><canvas id="top-players-point-chart"></canvas></div>
+                            <h3 class="cyber-header text-xl font-bold mb-4 text-center">ポイント推移</h3>
+                            <div class="w-full h-64 mx-auto"><canvas id="point-history-chart"></canvas></div>
                         </div>
                         <div class="cyber-card p-6 lg:col-span-2">
                             <h3 class="cyber-header text-xl font-bold mb-4 text-center">平均素点 vs 平均着順</h3>
@@ -954,8 +953,13 @@
 
             const allStats = calculateAllPlayerStats(games);
             const rankedUsers = Object.values(allStats).filter(u => u.totalHanchans > 0).sort((a,b) => b.totalPoints - a.totalPoints);
-            const colors = ['#58a6ff', '#52c569', '#f5655f', '#f2cc8f', '#e0aaff', '#9bf6ff'];
-
+            // More diverse color palette
+            const colors = [
+                '#58a6ff', '#52c569', '#f5655f', '#E2FF08', '#e0aaff', '#9bf6ff',
+                '#ffb700', '#00ffc8', '#ff73a9', '#66ff66', '#a9c5ff', '#ffc107',
+                '#81d4fa', '#ff9800', '#c8e6c9', '#ff5252', '#a1887f', '#b388ff'
+            ];
+            
             // League Rank Pie Chart
             const firstPlaceStats = rankedUsers.filter(u => u.ranks[0] > 0);
             if (leagueRankPieChart) leagueRankPieChart.destroy();
@@ -991,10 +995,13 @@
                 }
             });
 
-            // Top Players Point History
-            const top5Players = rankedUsers.slice(0, 5);
+            // Point History Chart
+            const allPlayers = Object.values(allStats).filter(u => u.totalHanchans > 0);
             const allDates = [...new Set(games.map(g => g.gameDate || new Date(g.createdAt.seconds * 1000).toLocaleDateString('ja-JP')))].sort();
-            const topPlayersDatasets = top5Players.map((player, index) => {
+            
+            if (pointHistoryChart) pointHistoryChart.destroy();
+
+            const pointHistoryDatasets = allPlayers.map((player, index) => {
                 const history = getPlayerPointHistory(player.id);
                 const data = [];
                 let lastPoint = 0;
@@ -1011,18 +1018,36 @@
                     label: player.name,
                     data: data,
                     borderColor: colors[index % colors.length],
-                    fill: false,
+                    backgroundColor: colors[index % colors.length] + '33', // Use a slightly transparent version for fill
+                    fill: false, // Set to false for line charts
                     tension: 0.1
                 }
             });
-            if (topPlayersPointChart) topPlayersPointChart.destroy();
-            topPlayersPointChart = new Chart(document.getElementById('top-players-point-chart').getContext('2d'), {
+
+            pointHistoryChart = new Chart(document.getElementById('point-history-chart').getContext('2d'), {
                 type: 'line',
                 data: {
                     labels: allDates,
-                    datasets: topPlayersDatasets
+                    datasets: pointHistoryDatasets
                 },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#c9d1d9' }}}, scales: { x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } }, y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } } } }
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { labels: { color: '#c9d1d9' }},
+                        tooltip: { mode: 'index', intersect: false }
+                    }, 
+                    scales: { 
+                        x: { 
+                            ticks: { color: '#8b949e' }, 
+                            grid: { color: '#30363d' } 
+                        }, 
+                        y: { 
+                            ticks: { color: '#8b949e' }, 
+                            grid: { color: '#30363d' } 
+                        } 
+                    } 
+                }
             });
 
             // Score vs Rank Scatter Chart
