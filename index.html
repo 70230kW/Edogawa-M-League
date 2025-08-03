@@ -3,87 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edogawa M League - Cyber Edition</title>
+    <title>Edogawa M League - Luxury Edition</title>
     <link rel="shortcut icon" href="https://whispering-longan-7ae.notion.site/image/attachment%3A69bbd160-bff9-46b2-a4db-6b6bcd17ddca%3Afavicon.ico?table=block&id=22e963f3-cf5b-800b-a682-e58a25d127fd&spaceId=6a5b5b21-cf98-4ba8-9055-06ff5ea77222&userId=&cache=v2" type="image/x-icon">
     <link rel="apple-touch-icon" href="https://whispering-longan-7ae.notion.site/image/attachment%3A05b1d84a-b328-41cd-9f7d-30a9f1fec554%3Afavicon.png?table=block&id=22e963f3-cf5b-804c-9a1f-fe97b4274113&spaceId=6a5b5b21-cf98-4ba8-9055-06ff5ea77222&width=360&userId=&cache=v2" sizes="180x180">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --bg-dark: #0d1117;
-            --primary: #161b22;
-            --secondary: #010409;
-            --border-color: #30363d;
-            --text-primary: #c9d1d9;
-            --text-secondary: #8b949e;
-            --accent-blue: #58a6ff;
-            --accent-green: #52c569; /* Softer Green */
-            --accent-red: #f5655f;   /* Softer Red */
-            --accent-yellow: #E2FF08;
-            --accent-glow: rgba(88, 166, 255, 0.5);
+            --bg-dark: #18181b;
+            --primary: #27272a;
+            --secondary: #1a1a1d;
+            --border-color: #52525b;
+            --text-primary: #f4f4f5;
+            --text-secondary: #a1a1aa;
+            --accent-gold: #d4af37;
+            --accent-green: #4ade80;
+            --accent-red: #f87171;
+            --accent-glow: rgba(212, 175, 55, 0.4);
         }
         html {
             scroll-behavior: smooth;
         }
         body {
-            font-family: '"MS PGothic", "ＭＳ Ｐゴシック", sans-serif';
+            font-family: 'Inter', '"MS PGothic", "ＭＳ Ｐゴシック", sans-serif';
             background-color: var(--bg-dark);
             color: var(--text-primary);
             user-select: none;
             -webkit-user-select: none;
         }
-        .cyber-card {
+        .themed-card {
             background-color: var(--primary);
             border: 1px solid var(--border-color);
-            box-shadow: 0 0 15px rgba(0,0,0,0.2), 0 0 5px var(--accent-glow);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
             transition: all 0.3s ease;
+            border-radius: 0.5rem;
         }
-        .cyber-btn {
+        .themed-card:hover {
+             box-shadow: 0 0 15px var(--accent-glow);
+             border-color: var(--accent-gold);
+        }
+        .themed-btn {
             background-color: transparent;
-            border: 1px solid var(--accent-blue);
-            color: var(--accent-blue);
-            text-shadow: 0 0 5px var(--accent-glow);
+            border: 1px solid var(--accent-gold);
+            color: var(--accent-gold);
+            text-shadow: 0 0 8px var(--accent-glow);
             transition: all 0.3s ease;
+            border-radius: 0.375rem;
+            font-weight: 500;
         }
-        .cyber-btn:hover, .cyber-btn.active {
-            background-color: var(--accent-blue);
-            color: var(--primary);
-            box-shadow: 0 0 10px var(--accent-glow);
+        .themed-btn:hover, .themed-btn.active {
+            background-color: var(--accent-gold);
+            color: var(--bg-dark);
+            box-shadow: 0 0 15px var(--accent-glow);
         }
-        .cyber-btn-yellow {
-            border-color: var(--accent-yellow);
-            color: var(--accent-yellow);
-            text-shadow: 0 0 5px var(--accent-yellow);
-        }
-        .cyber-btn-yellow:hover {
-            background-color: var(--accent-yellow);
-            color: var(--primary);
-            box-shadow: 0 0 10px var(--accent-yellow);
-        }
-        .cyber-btn-green {
+        .themed-btn-green {
             border-color: var(--accent-green);
             color: var(--accent-green);
         }
-        .cyber-btn-green:hover {
+        .themed-btn-green:hover {
             background-color: var(--accent-green);
-            color: var(--primary);
-            box-shadow: 0 0 10px rgba(82, 197, 105, 0.5);
+            color: var(--bg-dark);
         }
-        .cyber-btn-red {
+        .themed-btn-red {
             border-color: var(--accent-red);
             color: var(--accent-red);
-            text-shadow: 0 0 5px var(--accent-red);
         }
-        .cyber-btn-red:hover {
+        .themed-btn-red:hover {
             background-color: var(--accent-red);
-            color: var(--primary);
-            box-shadow: 0 0 10px var(--accent-red);
+            color: var(--bg-dark);
         }
         .tab-btn.active {
-            color: var(--accent-blue);
-            border-bottom-color: var(--accent-blue);
+            color: var(--accent-gold);
+            border-bottom-color: var(--accent-gold);
             text-shadow: 0 0 5px var(--accent-glow);
         }
         input[type="text"], input[type="number"], select {
@@ -92,10 +87,11 @@
             color: var(--text-primary);
             padding-top: 0.6rem;
             padding-bottom: 0.6rem;
+            border-radius: 0.375rem;
         }
         input:focus, select:focus {
             outline: none;
-            border-color: var(--accent-blue);
+            border-color: var(--accent-gold);
             box-shadow: 0 0 5px var(--accent-glow);
         }
         input:disabled, select:disabled {
@@ -103,9 +99,9 @@
             cursor: not-allowed;
         }
         .player-checkbox:checked + label {
-            background-color: var(--accent-blue);
-            color: var(--primary);
-            border-color: var(--accent-blue);
+            background-color: var(--accent-gold);
+            color: var(--bg-dark);
+            border-color: var(--accent-gold);
             box-shadow: 0 0 10px var(--accent-glow);
         }
         .player-checkbox:disabled + label {
@@ -115,7 +111,7 @@
             border-color: #444;
         }
         .modal-backdrop { background-color: rgba(0, 0, 0, 0.8); }
-        .cyber-header { font-family: 'Orbitron', sans-serif; }
+        .luxury-header { font-family: 'Playfair Display', serif; }
         .glowing-text { text-shadow: 0 0 8px var(--accent-glow); }
         .text-rank-1 { color: var(--accent-green); font-weight: bold; }
         .text-rank-4 { color: var(--accent-red); font-weight: bold; }
@@ -134,9 +130,9 @@
 <body class="text-gray-200">
 
     <div id="app" class="container mx-auto p-2 sm:p-4 max-w-7xl">
-        <header class="cyber-card p-4 sm:p-6 mb-6">
-            <h1 class="cyber-header text-2xl sm:text-4xl font-bold text-center glowing-text text-blue-400">
-                <i class="fa-solid fa-person-rifle mr-2 sm:mr-3"></i>Edogawa M League
+        <header class="themed-card p-4 sm:p-6 mb-6">
+            <h1 class="luxury-header text-2xl sm:text-4xl font-bold text-center glowing-text" style="color: var(--accent-gold);">
+                <i class="fa-solid fa-dragon mr-2 sm:mr-3"></i>Edogawa M League
             </h1>
             <p id="auth-status" class="text-center text-xs text-gray-500 mt-2">Initializing System...</p>
         </header>
@@ -145,14 +141,14 @@
         <div class="mb-6">
             <div class="border-b border-gray-700">
                 <nav class="-mb-px flex space-x-4 sm:space-x-6 overflow-x-auto no-scrollbar" aria-label="Tabs">
-                    <button onclick="changeTab('game')" class="tab-btn active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">対局</button>
-                    <button onclick="changeTab('leaderboard')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">順位表</button>
-                    <button onclick="changeTab('data-analysis')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">データ分析</button>
-                    <button onclick="changeTab('personal-stats')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">個人成績</button>
-                    <button onclick="changeTab('history')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">対局履歴</button>
-                    <button onclick="changeTab('history-raw')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">詳細履歴(素点)</button>
-                    <button onclick="changeTab('history-pt')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">詳細履歴(PT)</button>
-                    <button onclick="changeTab('users')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">雀士管理</button>
+                    <button onclick="changeTab('game')" class="tab-btn active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-yellow-300">対局</button>
+                    <button onclick="changeTab('leaderboard')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-yellow-300">順位表</button>
+                    <button onclick="changeTab('data-analysis')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-yellow-300">データ分析</button>
+                    <button onclick="changeTab('personal-stats')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-yellow-300">個人成績</button>
+                    <button onclick="changeTab('history')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-yellow-300">対局履歴</button>
+                    <button onclick="changeTab('history-raw')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-yellow-300">詳細履歴(素点)</button>
+                    <button onclick="changeTab('history-pt')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-yellow-300">詳細履歴(PT)</button>
+                    <button onclick="changeTab('users')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-yellow-300">雀士管理</button>
                 </nav>
             </div>
         </div>
@@ -160,19 +156,19 @@
         <!-- コンテンツエリア -->
         <main id="main-content">
             <div id="game-tab" class="space-y-6"></div>
-            <div id="leaderboard-tab" class="hidden cyber-card p-2 sm:p-6"></div>
+            <div id="leaderboard-tab" class="hidden themed-card p-2 sm:p-6"></div>
             <div id="data-analysis-tab" class="hidden"></div>
-            <div id="personal-stats-tab" class="hidden cyber-card p-2 sm:p-6"></div>
-            <div id="history-tab" class="hidden cyber-card p-2 sm:p-6"></div>
-            <div id="history-raw-tab" class="hidden cyber-card p-2 sm:p-6"></div>
-            <div id="history-pt-tab" class="hidden cyber-card p-2 sm:p-6"></div>
-            <div id="users-tab" class="hidden cyber-card p-2 sm:p-6"></div>
+            <div id="personal-stats-tab" class="hidden themed-card p-2 sm:p-6"></div>
+            <div id="history-tab" class="hidden themed-card p-2 sm:p-6"></div>
+            <div id="history-raw-tab" class="hidden themed-card p-2 sm:p-6"></div>
+            <div id="history-pt-tab" class="hidden themed-card p-2 sm:p-6"></div>
+            <div id="users-tab" class="hidden themed-card p-2 sm:p-6"></div>
         </main>
     </div>
 
     <!-- モーダル (汎用) -->
     <div id="modal" class="fixed inset-0 z-50 flex items-center justify-center hidden modal-backdrop">
-        <div id="modal-content" class="cyber-card p-4 sm:p-6 rounded-lg w-11/12 max-w-4xl max-h-[90vh] overflow-y-auto"></div>
+        <div id="modal-content" class="themed-card p-4 sm:p-6 rounded-lg w-11/12 max-w-4xl max-h-[90vh] overflow-y-auto"></div>
     </div>
 
     <!-- Firebase SDK -->
@@ -451,46 +447,46 @@
         function renderGameTab() {
             const container = document.getElementById('game-tab');
             container.innerHTML = `
-                <div id="step1-player-selection" class="cyber-card p-4 sm:p-6">
-                    <h2 class="cyber-header text-xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">STEP 1: 雀士選択</h2>
+                <div id="step1-player-selection" class="themed-card p-4 sm:p-6">
+                    <h2 class="luxury-header text-xl font-bold mb-4 border-b border-gray-700 pb-2" style="color: var(--accent-gold);">STEP 1: 雀士選択</h2>
                     <div id="player-list-for-selection" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4"></div>
                     <div class="flex justify-end">
-                        <button id="to-step2-btn" onclick="moveToStep2()" class="cyber-btn px-6 py-2 rounded-lg" disabled>進む <i class="fas fa-arrow-right ml-2"></i></button>
+                        <button id="to-step2-btn" onclick="moveToStep2()" class="themed-btn px-6 py-2" disabled>進む <i class="fas fa-arrow-right ml-2"></i></button>
                     </div>
                 </div>
-                <div id="step2-rule-settings" class="cyber-card p-4 sm:p-6 hidden">
-                    <h2 class="cyber-header text-xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">STEP 2: ルール選択</h2>
+                <div id="step2-rule-settings" class="themed-card p-4 sm:p-6 hidden">
+                    <h2 class="luxury-header text-xl font-bold mb-4 border-b border-gray-700 pb-2" style="color: var(--accent-gold);">STEP 2: ルール選択</h2>
                     <div class="space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><label class="block text-sm font-medium text-gray-400">基準点</label><input type="number" id="base-point" value="25000" class="mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
-                            <div><label class="block text-sm font-medium text-gray-400">返し点</label><input type="number" id="return-point" value="30000" class="mt-1 block w-full rounded-md shadow-sm sm:text-sm"></div>
+                            <div><label class="block text-sm font-medium text-gray-400">基準点</label><input type="number" id="base-point" value="25000" class="mt-1 block w-full shadow-sm sm:text-sm"></div>
+                            <div><label class="block text-sm font-medium text-gray-400">返し点</label><input type="number" id="return-point" value="30000" class="mt-1 block w-full shadow-sm sm:text-sm"></div>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-400">順位ウマ</label>
                             <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1">
-                                <input type="number" id="uma-1" placeholder="1位" value="30" class="w-full rounded-md shadow-sm sm:text-sm">
-                                <input type="number" id="uma-2" placeholder="2位" value="10" class="w-full rounded-md shadow-sm sm:text-sm">
-                                <input type="number" id="uma-3" placeholder="3位" value="-10" class="w-full rounded-md shadow-sm sm:text-sm">
-                                <input type="number" id="uma-4" placeholder="4位" value="-30" class="w-full rounded-md shadow-sm sm:text-sm">
+                                <input type="number" id="uma-1" placeholder="1位" value="30" class="w-full shadow-sm sm:text-sm">
+                                <input type="number" id="uma-2" placeholder="2位" value="10" class="w-full shadow-sm sm:text-sm">
+                                <input type="number" id="uma-3" placeholder="3位" value="-10" class="w-full shadow-sm sm:text-sm">
+                                <input type="number" id="uma-4" placeholder="4位" value="-30" class="w-full shadow-sm sm:text-sm">
                             </div>
                         </div>
                         <div class="flex flex-wrap items-center justify-between gap-4">
-                            <button onclick="setMLeagueRules()" class="cyber-btn cyber-btn-green px-4 py-2 rounded-lg"><i class="fas fa-star mr-2"></i>Mリーグルール</button>
+                            <button onclick="setMLeagueRules()" class="themed-btn themed-btn-green px-4 py-2"><i class="fas fa-star mr-2"></i>Mリーグルール</button>
                             <div class="text-right"><p class="text-sm text-gray-400">オカ: <span id="oka-display" class="font-bold text-white">20</span></p></div>
                         </div>
                     </div>
                     <div class="flex justify-between mt-6">
-                        <button onclick="backToStep1()" class="cyber-btn px-6 py-2 rounded-lg"><i class="fas fa-arrow-left mr-2"></i>戻る</button>
-                        <button onclick="moveToStep3()" class="cyber-btn px-6 py-2 rounded-lg">進む <i class="fas fa-arrow-right ml-2"></i></button>
+                        <button onclick="backToStep1()" class="themed-btn px-6 py-2"><i class="fas fa-arrow-left mr-2"></i>戻る</button>
+                        <button onclick="moveToStep3()" class="themed-btn px-6 py-2">進む <i class="fas fa-arrow-right ml-2"></i></button>
                     </div>
                 </div>
-                <div id="step3-score-input" class="cyber-card p-4 sm:p-6 hidden">
-                     <h2 class="cyber-header text-xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">STEP 3: 素点入力</h2>
+                <div id="step3-score-input" class="themed-card p-4 sm:p-6 hidden">
+                     <h2 class="luxury-header text-xl font-bold mb-4 border-b border-gray-700 pb-2" style="color: var(--accent-gold);">STEP 3: 素点入力</h2>
                      <div class="mb-4">
                          <label for="game-date" class="block text-sm font-medium text-gray-400 mb-1">対局日</label>
                          <div class="flex gap-2">
-                             <input type="text" id="game-date" class="flex-grow rounded-md shadow-sm sm:text-sm" placeholder="yyyy/m/d(aaa)">
-                             <button onclick="setTodayDate()" class="cyber-btn px-4 py-2 rounded-lg">今日</button>
+                             <input type="text" id="game-date" class="flex-grow shadow-sm sm:text-sm">
+                             <button onclick="setTodayDate()" class="themed-btn px-4 py-2">今日</button>
                          </div>
                      </div>
                      <!-- Score display area -->
@@ -498,13 +494,13 @@
                      <!-- Action buttons -->
                      <div class="flex flex-col sm:flex-row justify-between items-center mt-4 flex-wrap gap-4">
                          <div class="flex gap-2 w-full sm:w-auto">
-                             <button onclick="addHanchan()" class="cyber-btn px-4 py-2 rounded-lg w-full"><i class="fas fa-plus mr-2"></i>半荘追加</button>
-                             <button onclick="savePartialData()" class="cyber-btn cyber-btn-green px-4 py-2 rounded-lg w-full"><i class="fas fa-floppy-disk mr-2"></i>途中保存</button>
+                             <button onclick="addHanchan()" class="themed-btn px-4 py-2 w-full"><i class="fas fa-plus mr-2"></i>半荘追加</button>
+                             <button onclick="savePartialData()" class="themed-btn themed-btn-green px-4 py-2 w-full"><i class="fas fa-floppy-disk mr-2"></i>途中保存</button>
                          </div>
-                         <button onclick="showCurrentPtStatus()" class="cyber-btn px-4 py-2 rounded-lg order-first sm:order-none w-full sm:w-auto"><i class="fas fa-calculator mr-2"></i>現在のPT状況</button>
+                         <button onclick="showCurrentPtStatus()" class="themed-btn px-4 py-2 order-first sm:order-none w-full sm:w-auto"><i class="fas fa-calculator mr-2"></i>現在のPT状況</button>
                          <div class="flex gap-2 w-full sm:w-auto">
-                             <button onclick="backToStep2()" class="cyber-btn px-6 py-2 rounded-lg w-full"><i class="fas fa-arrow-left mr-2"></i>戻る</button>
-                             <button onclick="calculateAndSave()" class="cyber-btn cyber-btn-yellow px-6 py-2 rounded-lg w-full"><i class="fas fa-save mr-2"></i>Pt変換して保存</button>
+                             <button onclick="backToStep2()" class="themed-btn px-6 py-2 w-full"><i class="fas fa-arrow-left mr-2"></i>戻る</button>
+                             <button onclick="calculateAndSave()" class="themed-btn px-6 py-2 w-full" style="border-color: var(--accent-yellow); color: var(--accent-yellow);"><i class="fas fa-save mr-2"></i>Pt変換して保存</button>
                          </div>
                      </div>
                 </div>
@@ -520,7 +516,7 @@
 
             container.innerHTML = `
                 <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
-                    <h2 class="cyber-header text-2xl font-bold text-blue-400">順位表</h2>
+                    <h2 class="luxury-header text-2xl font-bold" style="color: var(--accent-gold);">順位表</h2>
                     <div class="flex items-center gap-2">
                         <label for="leaderboard-period-select" class="text-sm whitespace-nowrap">期間:</label>
                         <select id="leaderboard-period-select" onchange="updateLeaderboard()" class="rounded-md p-1">
@@ -561,10 +557,10 @@
         function renderUserManagementTab() {
             const container = document.getElementById('users-tab');
             container.innerHTML = `
-                <h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">雀士管理</h2>
+                <h2 class="luxury-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2" style="color: var(--accent-gold);">雀士管理</h2>
                 <div class="flex flex-col sm:flex-row gap-4 mb-4">
-                    <input type="text" id="new-user-name" class="flex-grow rounded-md shadow-sm sm:text-sm" placeholder="新しい雀士名">
-                    <button onclick="addUser()" class="cyber-btn px-6 py-2 rounded-lg whitespace-nowrap"><i class="fas fa-user-plus mr-2"></i>追加</button>
+                    <input type="text" id="new-user-name" class="flex-grow shadow-sm sm:text-sm" placeholder="新しい雀士名">
+                    <button onclick="addUser()" class="themed-btn px-6 py-2 whitespace-nowrap"><i class="fas fa-user-plus mr-2"></i>追加</button>
                 </div>
                 <div id="user-list-management" class="space-y-2"></div>
             `;
@@ -575,7 +571,7 @@
             const options = users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
             container.innerHTML = `
                 <div class="flex flex-col sm:flex-row flex-wrap justify-between items-center mb-4 gap-4">
-                    <h2 class="cyber-header text-2xl font-bold pb-2 text-blue-400">個人成績</h2>
+                    <h2 class="luxury-header text-2xl font-bold pb-2" style="color: var(--accent-gold);">個人成績</h2>
                     <div class="flex items-center gap-2">
                         <label for="personal-stats-player-select" class="text-sm text-gray-400">雀士:</label>
                         <select id="personal-stats-player-select" onchange="displayPlayerStats(this.value)" class="rounded-md p-1">
@@ -593,15 +589,15 @@
         function renderDetailedHistoryTabContainers() {
             const rawContainer = document.getElementById('history-raw-tab');
             const ptContainer = document.getElementById('history-pt-tab');
-            rawContainer.innerHTML = `<h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">詳細履歴 (素点)</h2><div id="history-raw-list" class="overflow-x-auto"></div>`;
-            ptContainer.innerHTML = `<h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">詳細履歴 (PT)</h2><div id="history-pt-list" class="overflow-x-auto"></div>`;
+            rawContainer.innerHTML = `<h2 class="luxury-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2" style="color: var(--accent-gold);">詳細履歴 (素点)</h2><div id="history-raw-list" class="overflow-x-auto"></div>`;
+            ptContainer.innerHTML = `<h2 class="luxury-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2" style="color: var(--accent-gold);">詳細履歴 (PT)</h2><div id="history-pt-list" class="overflow-x-auto"></div>`;
         }
         
         function renderDataAnalysisTab() {
             const container = document.getElementById('data-analysis-tab');
             container.innerHTML = `
                 <div class="space-y-6">
-                    <h2 class="cyber-header text-2xl font-bold text-blue-400 border-b border-gray-700 pb-2">データ分析ダッシュボード</h2>
+                    <h2 class="luxury-header text-2xl font-bold border-b border-gray-700 pb-2" style="color: var(--accent-gold);">データ分析ダッシュボード</h2>
                     
                     <!-- Stat Cards Row -->
                     <div id="stat-cards-container" class="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
@@ -610,18 +606,18 @@
 
                     <!-- Charts Grid -->
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div class="cyber-card p-4 sm:p-6 min-h-[300px] md:min-h-[400px]">
-                            <h3 class="cyber-header text-xl font-bold mb-4 text-center">雀士スタイル分析</h3>
+                        <div class="themed-card p-4 sm:p-6 min-h-[300px] md:min-h-[400px]">
+                            <h3 class="luxury-header text-xl font-bold mb-4 text-center">雀士スタイル分析</h3>
                             <div id="radar-player-select" class="flex flex-wrap justify-center gap-x-4 gap-y-2 mb-2 text-sm"></div>
                             <div class="relative h-64 md:h-80"><canvas id="player-radar-chart"></canvas></div>
                         </div>
-                        <div class="cyber-card p-4 sm:p-6 min-h-[300px] md:min-h-[400px]">
-                            <h3 class="cyber-header text-xl font-bold mb-4 text-center">ポイント推移</h3>
+                        <div class="themed-card p-4 sm:p-6 min-h-[300px] md:min-h-[400px]">
+                            <h3 class="luxury-header text-xl font-bold mb-4 text-center">ポイント推移</h3>
                             <div class="relative h-72 md:h-96"><canvas id="point-history-chart"></canvas></div>
                         </div>
-                        <div class="cyber-card p-4 sm:p-6 lg:col-span-2">
+                        <div class="themed-card p-4 sm:p-6 lg:col-span-2">
                              <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-2">
-                                 <h3 class="cyber-header text-xl font-bold text-center">雀士スタッツ比較</h3>
+                                 <h3 class="luxury-header text-xl font-bold text-center">雀士スタッツ比較</h3>
                                  <select id="bar-chart-metric-select" onchange="updateDataAnalysisCharts()" class="p-2 rounded-md text-sm"></select>
                              </div>
                             <div class="relative h-80"><canvas id="player-bar-chart"></canvas></div>
@@ -644,7 +640,7 @@
                 const div = document.createElement('div');
                 div.innerHTML = `
                     <input type="checkbox" id="player-${user.id}" class="player-checkbox hidden" value="${user.id}" name="${user.name}" onchange="togglePlayerSelection(this)" ${isSelected ? 'checked' : ''} ${isDisabled ? 'disabled' : ''}>
-                    <label for="player-${user.id}" class="block text-center border-2 border-gray-600 rounded-lg p-3 cursor-pointer transition-colors duration-200 hover:border-blue-500">
+                    <label for="player-${user.id}" class="block text-center border-2 border-gray-600 rounded-lg p-3 cursor-pointer transition-colors duration-200 hover:border-yellow-400">
                         <div class="w-16 h-16 mx-auto mb-2">${photoHtml}</div>
                         <span>${user.name}</span>
                     </label>
@@ -669,11 +665,11 @@
                             <input type="file" id="photo-upload-${user.id}" class="hidden" accept="image/*" onchange="handlePhotoUpload('${user.id}', this)">
                         </div>
                         <div class="flex-grow">
-                            <input type="text" id="user-name-input-${user.id}" value="${user.name}" data-original-name="${user.name}" class="w-full bg-transparent rounded-md p-1 -m-1 focus:bg-gray-800 focus:ring-1 focus:ring-blue-500 outline-none" readonly>
+                            <input type="text" id="user-name-input-${user.id}" value="${user.name}" data-original-name="${user.name}" class="w-full bg-transparent rounded-md p-1 -m-1 focus:bg-gray-800 focus:ring-1 focus:ring-yellow-400 outline-none" readonly>
                         </div>
                         <div class="flex items-center gap-1 flex-shrink-0">
-                            <button id="edit-user-btn-${user.id}" onclick="toggleEditUser('${user.id}')" class="cyber-btn text-sm px-3 py-1 rounded-md"><i class="fas fa-edit"></i></button>
-                            <button onclick="confirmDeleteUser('${user.id}')" class="cyber-btn-red text-sm px-3 py-1 rounded-md"><i class="fas fa-trash-alt"></i></button>
+                            <button id="edit-user-btn-${user.id}" onclick="toggleEditUser('${user.id}')" class="themed-btn text-sm px-3 py-1"><i class="fas fa-edit"></i></button>
+                            <button onclick="confirmDeleteUser('${user.id}')" class="themed-btn themed-btn-red text-sm px-3 py-1"><i class="fas fa-trash-alt"></i></button>
                         </div>
                     </div>
                 `}).join('');
@@ -739,9 +735,9 @@
                 leaderboardBody.innerHTML = rankedUsers.map((user, index) => {
                     const photoHtml = getPlayerPhotoHtml(user.id, 'w-8 h-8');
                     return `
-                        <tr class="hover:bg-gray-800 font-m-gothic text-xs md:text-sm">
+                        <tr class="hover:bg-zinc-700 font-m-gothic text-xs md:text-sm">
                             <td class="px-2 py-4 whitespace-nowrap text-right sticky-col-1">${index + 1}</td>
-                            <td class="px-2 py-4 whitespace-nowrap text-left font-medium text-blue-400 cursor-pointer hover:underline sticky-col-2" onclick="showPlayerStats('${user.id}')">
+                            <td class="px-2 py-4 whitespace-nowrap text-left font-medium text-yellow-300 cursor-pointer hover:underline sticky-col-2" onclick="showPlayerStats('${user.id}')">
                                 <div class="flex items-center gap-3">
                                     ${photoHtml}
                                     <span>${user.name}</span>
@@ -767,12 +763,12 @@
                 cardsContainer.innerHTML = rankedUsers.map((user, index) => {
                     const photoHtml = getPlayerPhotoHtml(user.id, 'w-12 h-12');
                     return `
-                    <div class="cyber-card p-3" onclick="showPlayerStats('${user.id}')">
+                    <div class="themed-card p-3" onclick="showPlayerStats('${user.id}')">
                         <div class="flex justify-between items-center mb-3">
                             <div class="flex items-center gap-3">
                                 <span class="text-xl font-bold text-gray-400 w-8 text-center">${index + 1}</span>
                                 ${photoHtml}
-                                <span class="font-bold text-lg text-blue-400">${user.name}</span>
+                                <span class="font-bold text-lg text-yellow-300">${user.name}</span>
                             </div>
                             <div class="text-right">
                                 <p class="text-xs text-gray-400">合計Pt</p>
@@ -795,7 +791,7 @@
 
         function renderHistoryList() {
             const container = document.getElementById('history-tab');
-            container.innerHTML = `<h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">対局履歴</h2>`;
+            container.innerHTML = `<h2 class="luxury-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2" style="color: var(--accent-gold);">対局履歴</h2>`;
             if (games.length === 0) {
                 container.innerHTML += `<p class="text-gray-500">対局履歴がありません。</p>`;
                 return;
@@ -810,7 +806,7 @@
                     const photoHtml = getPlayerPhotoHtml(winnerId, 'w-8 h-8');
 
                     return `
-                        <div class="p-4 rounded-lg bg-gray-900 border border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div class="bg-zinc-800/50 p-4 rounded-lg border border-zinc-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                             <div class="cursor-pointer flex-grow" onclick="showGameDetails('${game.id}')">
                                 <p class="font-bold text-lg">${date}</p>
                                 <p class="text-sm text-gray-400">${game.playerNames.join(', ')}</p>
@@ -852,7 +848,7 @@
 
             const createTable = (dataType) => {
                 let tableHtml = `<table class="min-w-full divide-y divide-gray-700 font-m-gothic text-xs md:text-sm">
-                    <thead class="bg-gray-900 text-xs md:text-sm font-medium text-gray-400 uppercase tracking-wider">
+                    <thead class="bg-zinc-900 text-xs md:text-sm font-medium text-gray-400 uppercase tracking-wider">
                         <tr>
                             <th class="px-2 py-3 text-left whitespace-nowrap">日時</th>
                             ${users.map(u => `<th class="px-2 py-3 text-right whitespace-nowrap">${u.name}</th>`).join('')}
@@ -960,35 +956,35 @@
             container.innerHTML = `
                 <div class="flex items-center gap-4 mb-6">
                     ${photoHtml}
-                    <h3 class="cyber-header text-3xl font-bold text-blue-400">${player.name}</h3>
+                    <h3 class="luxury-header text-3xl font-bold" style="color: var(--accent-gold);">${player.name}</h3>
                 </div>
 
                 <!-- Stat Cards -->
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-center mb-6">
-                    <div class="cyber-card p-3"><p class="text-sm text-gray-400">合計Pt</p><p class="text-2xl font-bold ${playerStats.totalPoints >= 0 ? 'text-green-400' : 'text-red-400'}">${playerStats.totalPoints.toFixed(1)}</p><p class="text-xs text-gray-500 mt-1">全体 ${totalPointsRank.total}人中 ${totalPointsRank.rank}位</p></div>
-                    <div class="cyber-card p-3"><p class="text-sm text-gray-400">平均着順</p><p class="text-2xl font-bold">${playerStats.avgRank.toFixed(2)}</p><p class="text-xs text-gray-500 mt-1">全体 ${avgRankRank.total}人中 ${avgRankRank.rank}位</p></div>
-                    <div class="cyber-card p-3"><p class="text-sm text-gray-400">トップ率</p><p class="text-2xl font-bold text-green-400">${playerStats.topRate.toFixed(1)}%</p><p class="text-xs text-gray-500 mt-1">全体 ${topRateRank.total}人中 ${topRateRank.rank}位</p></div>
-                    <div class="cyber-card p-3"><p class="text-sm text-gray-400">連対率</p><p class="text-2xl font-bold">${playerStats.rentaiRate.toFixed(1)}%</p><p class="text-xs text-gray-500 mt-1">全体 ${rentaiRateRank.total}人中 ${rentaiRateRank.rank}位</p></div>
-                    <div class="cyber-card p-3"><p class="text-sm text-gray-400">ラス率</p><p class="text-2xl font-bold text-red-400">${playerStats.lastRate.toFixed(1)}%</p><p class="text-xs text-gray-500 mt-1">全体 ${lastRateRank.total}人中 ${lastRateRank.rank}位</p></div>
-                    <div class="cyber-card p-3"><p class="text-sm text-gray-400">平均素点</p><p class="text-2xl font-bold">${playerStats.avgRawScore.toLocaleString()}</p><p class="text-xs text-gray-500 mt-1">全体 ${avgRawScoreRank.total}人中 ${avgRawScoreRank.rank}位</p></div>
+                    <div class="themed-card p-3"><p class="text-sm text-gray-400">合計Pt</p><p class="text-2xl font-bold ${playerStats.totalPoints >= 0 ? 'text-green-400' : 'text-red-400'}">${playerStats.totalPoints.toFixed(1)}</p><p class="text-xs text-gray-500 mt-1">全体 ${totalPointsRank.total}人中 ${totalPointsRank.rank}位</p></div>
+                    <div class="themed-card p-3"><p class="text-sm text-gray-400">平均着順</p><p class="text-2xl font-bold">${playerStats.avgRank.toFixed(2)}</p><p class="text-xs text-gray-500 mt-1">全体 ${avgRankRank.total}人中 ${avgRankRank.rank}位</p></div>
+                    <div class="themed-card p-3"><p class="text-sm text-gray-400">トップ率</p><p class="text-2xl font-bold text-green-400">${playerStats.topRate.toFixed(1)}%</p><p class="text-xs text-gray-500 mt-1">全体 ${topRateRank.total}人中 ${topRateRank.rank}位</p></div>
+                    <div class="themed-card p-3"><p class="text-sm text-gray-400">連対率</p><p class="text-2xl font-bold">${playerStats.rentaiRate.toFixed(1)}%</p><p class="text-xs text-gray-500 mt-1">全体 ${rentaiRateRank.total}人中 ${rentaiRateRank.rank}位</p></div>
+                    <div class="themed-card p-3"><p class="text-sm text-gray-400">ラス率</p><p class="text-2xl font-bold text-red-400">${playerStats.lastRate.toFixed(1)}%</p><p class="text-xs text-gray-500 mt-1">全体 ${lastRateRank.total}人中 ${lastRateRank.rank}位</p></div>
+                    <div class="themed-card p-3"><p class="text-sm text-gray-400">平均素点</p><p class="text-2xl font-bold">${playerStats.avgRawScore.toLocaleString()}</p><p class="text-xs text-gray-500 mt-1">全体 ${avgRawScoreRank.total}人中 ${avgRawScoreRank.rank}位</p></div>
                 </div>
 
-                <div class="cyber-card p-4 mb-6">
+                <div class="themed-card p-4 mb-6">
                     <h4 class="font-bold mb-2">比較対象</h4>
                     <div id="comparison-checkboxes" class="flex flex-wrap">${comparisonOptions}</div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <div class="cyber-card p-4 sm:p-6">
-                        <h3 class="cyber-header text-xl font-bold mb-4 text-center">順位分布</h3>
+                    <div class="themed-card p-4 sm:p-6">
+                        <h3 class="luxury-header text-xl font-bold mb-4 text-center">順位分布</h3>
                         <div class="w-full h-64 mx-auto"><canvas id="rank-chart-personal"></canvas></div>
                     </div>
-                    <div class="cyber-card p-4 sm:p-6">
-                        <h3 class="cyber-header text-xl font-bold mb-4 text-center">ポイント推移</h3>
+                    <div class="themed-card p-4 sm:p-6">
+                        <h3 class="luxury-header text-xl font-bold mb-4 text-center">ポイント推移</h3>
                         <div class="w-full h-64 mx-auto"><canvas id="point-history-chart-personal"></canvas></div>
                     </div>
                 </div>
-                <div id="player-history-container" class="cyber-card p-4 sm:p-6"></div>
+                <div id="player-history-container" class="themed-card p-4 sm:p-6"></div>
             `;
             
             renderStatsCharts(playerId, []);
@@ -1037,14 +1033,14 @@
             });
 
             if (playerHanchans.length === 0) {
-                container.innerHTML = `<h3 class="cyber-header text-xl font-bold mb-4 text-center">対局履歴</h3><p class="text-gray-500 text-center">まだ対局記録がありません。</p>`;
+                container.innerHTML = `<h3 class="luxury-header text-xl font-bold mb-4 text-center">対局履歴</h3><p class="text-gray-500 text-center">まだ対局記録がありません。</p>`;
                 return;
             }
 
-            let tableHtml = `<h3 class="cyber-header text-xl font-bold mb-4 text-center">対局履歴</h3>
+            let tableHtml = `<h3 class="luxury-header text-xl font-bold mb-4 text-center">対局履歴</h3>
                 <div class="overflow-x-auto max-h-96">
                     <table class="min-w-full divide-y divide-gray-700 text-sm">
-                        <thead class="bg-gray-900 sticky top-0"><tr>
+                        <thead class="bg-zinc-900 sticky top-0"><tr>
                             <th class="px-4 py-2 text-left">日時</th>
                             <th class="px-4 py-2 text-right">着順</th>
                             <th class="px-4 py-2 text-right">素点</th>
@@ -1191,12 +1187,12 @@
                 };
 
                 statCardsContainer.innerHTML = `
-                    <div class="cyber-card p-3"><p class="text-sm text-gray-400">総半荘数</p><p class="text-2xl font-bold" style="color: var(--accent-green);">${totalHanchans}</p><p class="text-xs text-gray-500">開催日数: ${gameDays}日</p></div>
-                    <div class="cyber-card p-3"><p class="text-sm text-gray-400">現時点トップ</p><p class="text-xl font-bold" style="color: ${getColorForPlayer(leader.id)};">${leader.name}</p><p class="text-xs">${leader.totalPoints.toFixed(1)} pt</p></div>
-                    <div class="cyber-card p-3"><p class="text-sm text-gray-400">参加半荘数トップ</p><p class="text-xl font-bold" style="color: ${getColorForPlayer(topHanchans.id)};">${topHanchans.name}</p><p class="text-xs">参加 ${topHanchans.totalHanchans}半荘：参加率 ${hanchanParticipationRate}％</p></div>
-                    <div class="cyber-card p-3"><p class="text-sm text-gray-400">参加日数トップ</p><p class="text-xl font-bold" style="color: ${getColorForPlayer(topDays.id)};">${topDays.name}</p><p class="text-xs">参加 ${participationDays[topDays.id].size}日：参加率 ${daysParticipationRate}％</p></div>
-                    <div class="cyber-card p-3"><p class="text-sm text-gray-400">1半荘最高素点</p><p class="text-xl font-bold" style="color: ${getColorForPlayer(highestHanchan.id)};">${highestHanchan.name}</p><p class="text-xs">${highestHanchan.score.toLocaleString()}点</p></div>
-                    <div class="cyber-card p-3"><p class="text-sm text-gray-400">1日最高獲得Pt</p><p class="text-xl font-bold" style="color: ${getColorForPlayer(highestDaily.id)};">${highestDaily.name}</p><p class="text-xs">+${highestDaily.pt.toFixed(1)} pt</p></div>
+                    <div class="themed-card p-3"><p class="text-sm text-gray-400">総半荘数</p><p class="text-2xl font-bold" style="color: var(--accent-green);">${totalHanchans}</p><p class="text-xs text-gray-500">開催日数: ${gameDays}日</p></div>
+                    <div class="themed-card p-3"><p class="text-sm text-gray-400">現時点トップ</p><p class="text-xl font-bold" style="color: ${getColorForPlayer(leader.id)};">${leader.name}</p><p class="text-xs">${leader.totalPoints.toFixed(1)} pt</p></div>
+                    <div class="themed-card p-3"><p class="text-sm text-gray-400">参加半荘数トップ</p><p class="text-xl font-bold" style="color: ${getColorForPlayer(topHanchans.id)};">${topHanchans.name}</p><p class="text-xs">参加 ${topHanchans.totalHanchans}半荘：参加率 ${hanchanParticipationRate}％</p></div>
+                    <div class="themed-card p-3"><p class="text-sm text-gray-400">参加日数トップ</p><p class="text-xl font-bold" style="color: ${getColorForPlayer(topDays.id)};">${topDays.name}</p><p class="text-xs">参加 ${participationDays[topDays.id].size}日：参加率 ${daysParticipationRate}％</p></div>
+                    <div class="themed-card p-3"><p class="text-sm text-gray-400">1半荘最高素点</p><p class="text-xl font-bold" style="color: ${getColorForPlayer(highestHanchan.id)};">${highestHanchan.name}</p><p class="text-xs">${highestHanchan.score.toLocaleString()}点</p></div>
+                    <div class="themed-card p-3"><p class="text-sm text-gray-400">1日最高獲得Pt</p><p class="text-xl font-bold" style="color: ${getColorForPlayer(highestDaily.id)};">${highestDaily.name}</p><p class="text-xs">+${highestDaily.pt.toFixed(1)} pt</p></div>
                 `;
             } else {
                 statCardsContainer.innerHTML = `<div class="col-span-full text-center text-gray-500 py-4">データがありません</div>`;
@@ -1424,7 +1420,7 @@
                 input.focus();
                 input.setSelectionRange(input.value.length, input.value.length);
                 editBtn.innerHTML = '<i class="fas fa-save"></i>';
-                editBtn.classList.add('cyber-btn-green');
+                editBtn.classList.add('themed-btn-green');
             } else {
                 const newName = input.value.trim();
 
@@ -1450,7 +1446,7 @@
                 
                 input.readOnly = true;
                 editBtn.innerHTML = '<i class="fas fa-edit"></i>';
-                editBtn.classList.remove('cyber-btn-green');
+                editBtn.classList.remove('themed-btn-green');
             }
         };
 
@@ -1458,11 +1454,11 @@
             const user = users.find(u => u.id === id);
             if (!user) return;
             showModal(`
-                <h3 class="cyber-header text-xl font-bold text-red-400 mb-4">削除確認</h3>
+                <h3 class="luxury-header text-xl font-bold text-red-400 mb-4">削除確認</h3>
                 <p>「${user.name}」を削除しますか？<br>関連する全ての対局データも永久に削除されます。この操作は元に戻せません。</p>
                 <div class="flex justify-end gap-4 mt-6">
-                    <button onclick="closeModal()" class="cyber-btn px-4 py-2 rounded-lg">キャンセル</button>
-                    <button onclick="executeDeleteUser('${id}')" class="cyber-btn cyber-btn-red px-4 py-2 rounded-lg">削除実行</button>
+                    <button onclick="closeModal()" class="themed-btn px-4 py-2">キャンセル</button>
+                    <button onclick="executeDeleteUser('${id}')" class="themed-btn themed-btn-red px-4 py-2">削除実行</button>
                 </div>
             `);
         };
@@ -1484,11 +1480,11 @@
         
         window.confirmDeleteGame = (gameId, date) => {
             showModal(`
-                <h3 class="cyber-header text-xl font-bold text-red-400 mb-4">対局履歴 削除確認</h3>
+                <h3 class="luxury-header text-xl font-bold text-red-400 mb-4">対局履歴 削除確認</h3>
                 <p>${date} の対局データを削除しますか？<br>この操作は元に戻せません。</p>
                 <div class="flex justify-end gap-4 mt-6">
-                    <button onclick="closeModal()" class="cyber-btn px-4 py-2 rounded-lg">キャンセル</button>
-                    <button onclick="executeDeleteGame('${gameId}')" class="cyber-btn cyber-btn-red px-4 py-2 rounded-lg">削除実行</button>
+                    <button onclick="closeModal()" class="themed-btn px-4 py-2">キャンセル</button>
+                    <button onclick="executeDeleteGame('${gameId}')" class="themed-btn themed-btn-red px-4 py-2">削除実行</button>
                 </div>
             `);
         };
@@ -1580,12 +1576,12 @@
                 const { points, rawRanks, pointRanks } = calculateHanchanRanksAndPoints(scores);
 
                 return `
-                <div class="cyber-card p-3" id="hanchan-display-${index}">
+                <div class="themed-card p-3" id="hanchan-display-${index}">
                     <div class="flex justify-between items-center mb-2">
                         <h4 class="font-bold text-lg">半荘 #${index + 1}</h4>
                         <div class="flex gap-2">
-                            <button onclick="openScoreInputModal(${index})" class="cyber-btn px-3 py-1 rounded-md text-sm"><i class="fas fa-edit mr-1"></i>編集</button>
-                            <button onclick="deleteHanchan(${index})" class="cyber-btn-red px-3 py-1 rounded-md text-sm"><i class="fas fa-trash"></i></button>
+                            <button onclick="openScoreInputModal(${index})" class="themed-btn px-3 py-1 text-sm"><i class="fas fa-edit mr-1"></i>編集</button>
+                            <button onclick="deleteHanchan(${index})" class="themed-btn themed-btn-red px-3 py-1 text-sm"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
                     <div class="overflow-x-auto">
@@ -1657,7 +1653,7 @@
             const scores = hanchanScores[index];
             
             const modalHtml = `
-                <h3 class="cyber-header text-xl font-bold text-blue-400 mb-4">半荘 #${index + 1} スコア入力</h3>
+                <h3 class="luxury-header text-xl font-bold text-yellow-300 mb-4">半荘 #${index + 1} スコア入力</h3>
                 <div class="grid md:grid-cols-2 gap-4">
                     <!-- Score Inputs -->
                     <div class="space-y-3">
@@ -1668,7 +1664,7 @@
                                     <span class="text-sm font-medium text-gray-400">${p.name}</span>
                                 </label>
                                 <input type="text" id="modal-score-${p.id}" 
-                                       class="modal-score-input block w-full rounded-md shadow-sm sm:text-lg p-2 text-right border-2 border-transparent bg-gray-800" 
+                                       class="modal-score-input block w-full shadow-sm sm:text-lg p-2 text-right border-2 border-transparent bg-zinc-800" 
                                        value="${scores[p.id] !== null ? scores[p.id] : ''}" 
                                        onfocus="setActiveInput('modal-score-${p.id}')"
                                        readonly>
@@ -1676,22 +1672,22 @@
                         `).join('')}
                          <div>
                             <label class="block text-sm font-medium text-gray-400 mt-2">合計</label>
-                            <div id="modal-total-score" class="mt-1 block w-full rounded-md bg-gray-900 p-2 text-right sm:text-lg font-bold">0</div>
+                            <div id="modal-total-score" class="mt-1 block w-full bg-zinc-900 p-2 text-right sm:text-lg font-bold">0</div>
                         </div>
                     </div>
                     <!-- Numeric Keypad -->
                     <div class="grid grid-cols-3 gap-2">
                         ${[7, 8, 9, 4, 5, 6, 1, 2, 3, 0, '00', '000'].map(key => `
-                            <button onclick="keypadInput('${key}')" class="cyber-btn aspect-square text-xl md:text-2xl font-bold">${key}</button>
+                            <button onclick="keypadInput('${key}')" class="themed-btn aspect-square text-xl md:text-2xl font-bold">${key}</button>
                         `).join('')}
-                        <button onclick="keypadInput('マイナス')" class="cyber-btn aspect-square text-xl md:text-2xl font-bold">-</button>
-                        <button onclick="keypadInput('C')" class="cyber-btn-red aspect-square text-xl md:text-2xl font-bold">C</button>
-                        <button onclick="keypadInput('auto')" class="cyber-btn-green aspect-square text-lg md:text-xl font-bold">AUTO</button>
+                        <button onclick="keypadInput('マイナス')" class="themed-btn aspect-square text-xl md:text-2xl font-bold">-</button>
+                        <button onclick="keypadInput('C')" class="themed-btn themed-btn-red aspect-square text-xl md:text-2xl font-bold">C</button>
+                        <button onclick="keypadInput('auto')" class="themed-btn themed-btn-green aspect-square text-lg md:text-xl font-bold">AUTO</button>
                     </div>
                 </div>
                 <div class="flex justify-end gap-4 mt-6">
-                    <button onclick="closeModal()" class="cyber-btn px-4 py-2 rounded-lg">キャンセル</button>
-                    <button onclick="saveScoresFromModal(${index})" class="cyber-btn-yellow px-4 py-2 rounded-lg">保存</button>
+                    <button onclick="closeModal()" class="themed-btn px-4 py-2">キャンセル</button>
+                    <button onclick="saveScoresFromModal(${index})" class="themed-btn px-4 py-2" style="border-color: var(--accent-yellow); color: var(--accent-yellow);">保存</button>
                 </div>
             `;
             showModal(modalHtml);
@@ -1701,10 +1697,10 @@
         };
 
         window.setActiveInput = (inputId) => {
-            document.querySelectorAll('.modal-score-input').forEach(el => el.classList.remove('border-blue-500', 'ring-2', 'ring-blue-500'));
+            document.querySelectorAll('.modal-score-input').forEach(el => el.classList.remove('border-yellow-400', 'ring-2', 'ring-yellow-400'));
             const activeEl = document.getElementById(inputId);
             if (activeEl) {
-                activeEl.classList.add('ring-2', 'ring-blue-500');
+                activeEl.classList.add('ring-2', 'ring-yellow-400');
                 window.activeInputId = inputId;
             }
         };
@@ -1906,7 +1902,7 @@
                 .map(([id, points]) => ({ id, name: selectedPlayers.find(p=>p.id===id).name, points }))
                 .sort((a, b) => b.points - a.points);
             
-            let modalHtml = `<h3 class="cyber-header text-xl font-bold text-blue-400 mb-4">現在のポイント状況</h3>
+            let modalHtml = `<h3 class="luxury-header text-xl font-bold text-yellow-300 mb-4">現在のポイント状況</h3>
                 <table class="min-w-full text-center">
                     <thead><tr class="border-b border-gray-700"><th class="py-2">順位</th><th class="py-2">雀士</th><th class="py-2">ポイント</th></tr></thead><tbody>`;
             
@@ -1918,7 +1914,7 @@
                 </tr>`;
             });
 
-            modalHtml += `</tbody></table><div class="flex justify-end mt-6"><button onclick="closeModal()" class="cyber-btn px-4 py-2 rounded-lg">閉じる</button></div>`;
+            modalHtml += `</tbody></table><div class="flex justify-end mt-6"><button onclick="closeModal()" class="themed-btn px-4 py-2">閉じる</button></div>`;
             showModal(modalHtml);
         };
 
@@ -1956,10 +1952,10 @@
             document.getElementById('modal').classList.remove('hidden');
         }
         function showModalMessage(message) {
-            showModal(`<p class="text-lg text-center">${message}</p><div class="flex justify-end mt-6"><button onclick="closeModal()" class="cyber-btn px-6 py-2 rounded-lg">閉じる</button></div>`);
+            showModal(`<p class="text-lg text-center">${message}</p><div class="flex justify-end mt-6"><button onclick="closeModal()" class="themed-btn px-6 py-2">閉じる</button></div>`);
         }
         function showLoadingModal(message) {
-            showModal(`<div class="flex justify-center items-center flex-col gap-4"><p class="text-lg text-center">${message}</p><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div></div>`);
+            showModal(`<div class="flex justify-center items-center flex-col gap-4"><p class="text-lg text-center">${message}</p><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400"></div></div>`);
         }
         window.closeModal = () => document.getElementById('modal').classList.add('hidden');
 
@@ -2041,7 +2037,7 @@
             const rawScoresBody = createTableBody('rawScores');
 
             let detailsHtml = `
-                <h3 class="cyber-header text-xl font-bold text-blue-400 mb-2">${date}</h3>
+                <h3 class="luxury-header text-xl font-bold text-yellow-300 mb-2">${date}</h3>
                 <div class="space-y-6">
                     <div>
                         <h4 class="font-bold mb-2">着順</h4>
@@ -2056,7 +2052,7 @@
                         <div class="overflow-x-auto"><table class="min-w-full text-sm"><thead><tr><th class="px-2 py-2 text-center">#</th>${playerHeaders}</tr></thead><tbody class="divide-y divide-gray-700">${rawScoresBody}</tbody></table></div>
                     </div>
                 </div>
-                <div class="flex justify-end mt-6"><button onclick="closeModal()" class="cyber-btn px-4 py-2 rounded-lg">閉じる</button></div>
+                <div class="flex justify-end mt-6"><button onclick="closeModal()" class="themed-btn px-4 py-2">閉じる</button></div>
             `;
             showModal(detailsHtml);
         };
