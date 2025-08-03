@@ -125,7 +125,7 @@
         .sticky-col-2 { position: sticky; left: 56px; z-index: 1; }
         
         .leaderboard-table th, .leaderboard-table td { background-color: var(--primary); }
-        .leaderboard-table thead th { z-index: 2; }
+        .leaderboard-table thead th { position: sticky; top: 0; z-index: 2; }
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -190,10 +190,14 @@
         let selectedPlayers = []; // {id, name, photoURL}
         let hanchanScores = [];   // Holds scores for each hanchan
         let activeInputId = null; // Holds the ID of the active score input in the modal
+        
+        // Chart instances
         let rankChart = null;
         let pointHistoryChart = null;
         let playerRadarChart = null;
         let playerBarChart = null;
+        let personalRankChart = null;
+        let personalPointHistoryChart = null;
         
         // --- Firebase Config ---
         const firebaseConfig = {
@@ -461,16 +465,16 @@
                      <div id="score-display-area" class="space-y-4"></div>
                      <!-- Action buttons -->
                      <div class="flex flex-col sm:flex-row justify-between items-center mt-4 flex-wrap gap-4">
-                        <div class="flex gap-2 w-full sm:w-auto">
-                            <button onclick="addHanchan()" class="cyber-btn px-4 py-2 rounded-lg w-full"><i class="fas fa-plus mr-2"></i>半荘追加</button>
-                            <button onclick="savePartialData()" class="cyber-btn cyber-btn-green px-4 py-2 rounded-lg w-full"><i class="fas fa-floppy-disk mr-2"></i>途中保存</button>
-                        </div>
-                        <button onclick="showCurrentPtStatus()" class="cyber-btn px-4 py-2 rounded-lg order-first sm:order-none w-full sm:w-auto"><i class="fas fa-calculator mr-2"></i>現在のPT状況</button>
-                        <div class="flex gap-2 w-full sm:w-auto">
-                            <button onclick="backToStep2()" class="cyber-btn px-6 py-2 rounded-lg w-full"><i class="fas fa-arrow-left mr-2"></i>戻る</button>
-                            <button onclick="calculateAndSave()" class="cyber-btn cyber-btn-yellow px-6 py-2 rounded-lg w-full"><i class="fas fa-save mr-2"></i>Pt変換して保存</button>
-                        </div>
-                    </div>
+                         <div class="flex gap-2 w-full sm:w-auto">
+                             <button onclick="addHanchan()" class="cyber-btn px-4 py-2 rounded-lg w-full"><i class="fas fa-plus mr-2"></i>半荘追加</button>
+                             <button onclick="savePartialData()" class="cyber-btn cyber-btn-green px-4 py-2 rounded-lg w-full"><i class="fas fa-floppy-disk mr-2"></i>途中保存</button>
+                         </div>
+                         <button onclick="showCurrentPtStatus()" class="cyber-btn px-4 py-2 rounded-lg order-first sm:order-none w-full sm:w-auto"><i class="fas fa-calculator mr-2"></i>現在のPT状況</button>
+                         <div class="flex gap-2 w-full sm:w-auto">
+                             <button onclick="backToStep2()" class="cyber-btn px-6 py-2 rounded-lg w-full"><i class="fas fa-arrow-left mr-2"></i>戻る</button>
+                             <button onclick="calculateAndSave()" class="cyber-btn cyber-btn-yellow px-6 py-2 rounded-lg w-full"><i class="fas fa-save mr-2"></i>Pt変換して保存</button>
+                         </div>
+                     </div>
                 </div>
             `;
             renderPlayerSelection();
@@ -493,7 +497,12 @@
                         </select>
                     </div>
                 </div>
-                <div class="overflow-x-auto">
+
+                <!-- Mobile Card View -->
+                <div id="leaderboard-cards-container" class="space-y-4 md:hidden"></div>
+
+                <!-- Desktop Table View -->
+                <div class="overflow-x-auto hidden md:block">
                     <table class="min-w-full divide-y divide-gray-700 leaderboard-table">
                         <thead class="bg-gray-900 text-xs md:text-sm font-medium text-gray-400 uppercase tracking-wider">
                             <tr>
@@ -582,8 +591,8 @@
                         </div>
                         <div class="cyber-card p-4 sm:p-6 lg:col-span-2">
                              <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-2">
-                                <h3 class="cyber-header text-xl font-bold text-center">雀士スタッツ比較</h3>
-                                <select id="bar-chart-metric-select" onchange="updateDataAnalysisCharts()" class="p-2 rounded-md text-sm"></select>
+                                 <h3 class="cyber-header text-xl font-bold text-center">雀士スタッツ比較</h3>
+                                 <select id="bar-chart-metric-select" onchange="updateDataAnalysisCharts()" class="p-2 rounded-md text-sm"></select>
                              </div>
                             <div class="relative h-80"><canvas id="player-bar-chart"></canvas></div>
                         </div>
@@ -660,9 +669,12 @@
             const allStats = calculateAllPlayerStats(filteredGames);
             const rankedUsers = Object.values(allStats).filter(u => u.totalHanchans > 0);
             
+            const leaderboardBody = document.getElementById('leaderboard-body');
+            const cardsContainer = document.getElementById('leaderboard-cards-container');
+
             if (rankedUsers.length === 0) {
-                const leaderboardBody = document.getElementById('leaderboard-body');
                 if(leaderboardBody) leaderboardBody.innerHTML = `<tr><td colspan="12" class="text-center py-4 text-gray-500">NO DATA</td></tr>`;
+                if(cardsContainer) cardsContainer.innerHTML = `<p class="text-center py-4 text-gray-500">NO DATA</p>`;
                 return;
             }
 
@@ -690,46 +702,76 @@
 
             rankedUsers.sort((a, b) => b.totalPoints - a.totalPoints);
             
-            const leaderboardBody = document.getElementById('leaderboard-body');
-            if (!leaderboardBody) return;
-            
-            leaderboardBody.innerHTML = rankedUsers.map((user, index) => {
-                const getClass = (field, value) => {
-                    if (rankedUsers.length <= 1) return '';
-                    if (minMax[field].min === minMax[field].max) return '';
-                    if (statFields[field] === 'higher') {
-                        if (value === minMax[field].max) return 'text-rank-1';
-                        if (value === minMax[field].min) return 'text-rank-4';
-                    } else if (statFields[field] === 'lower') {
-                        if (value === minMax[field].min) return 'text-rank-1';
-                        if (value === minMax[field].max) return 'text-rank-4';
-                    }
-                    return '';
-                };
-                const photoHtml = getPlayerPhotoHtml(user.id, 'w-8 h-8');
-                
-                return `
-                    <tr class="hover:bg-gray-800 font-m-gothic text-xs md:text-sm">
-                        <td class="px-2 py-4 whitespace-nowrap text-right sticky-col-1">${index + 1}</td>
-                        <td class="px-2 py-4 whitespace-nowrap text-left font-medium text-blue-400 cursor-pointer hover:underline sticky-col-2" onclick="showPlayerStats('${user.id}')">
+            const getClass = (field, value) => {
+                if (rankedUsers.length <= 1) return '';
+                if (minMax[field].min === minMax[field].max) return '';
+                if (statFields[field] === 'higher') {
+                    if (value === minMax[field].max) return 'text-rank-1';
+                    if (value === minMax[field].min) return 'text-rank-4';
+                } else if (statFields[field] === 'lower') {
+                    if (value === minMax[field].min) return 'text-rank-1';
+                    if (value === minMax[field].max) return 'text-rank-4';
+                }
+                return '';
+            };
+
+            // Populate Desktop Table
+            if (leaderboardBody) {
+                leaderboardBody.innerHTML = rankedUsers.map((user, index) => {
+                    const photoHtml = getPlayerPhotoHtml(user.id, 'w-8 h-8');
+                    return `
+                        <tr class="hover:bg-gray-800 font-m-gothic text-xs md:text-sm">
+                            <td class="px-2 py-4 whitespace-nowrap text-right sticky-col-1">${index + 1}</td>
+                            <td class="px-2 py-4 whitespace-nowrap text-left font-medium text-blue-400 cursor-pointer hover:underline sticky-col-2" onclick="showPlayerStats('${user.id}')">
+                                <div class="flex items-center gap-3">
+                                    ${photoHtml}
+                                    <span>${user.name}</span>
+                                </div>
+                            </td>
+                            <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right font-bold ${user.totalPoints >= 0 ? 'text-green-400' : 'text-red-400'}">${(user.totalPoints).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</td>
+                            <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right">${user.totalHanchans.toLocaleString()}</td>
+                            <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('avgRank', user.avgRank)}">${user.avgRank.toFixed(2)}</td>
+                            <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('topRate', user.topRate)}">${user.topRate.toFixed(2)}%</td>
+                            <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('secondRate', user.secondRate)}">${user.secondRate.toFixed(2)}%</td>
+                            <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('thirdRate', user.thirdRate)}">${user.thirdRate.toFixed(2)}%</td>
+                            <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('lastRate', user.lastRate)}">${user.lastRate.toFixed(2)}%</td>
+                            <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('rentaiRate', user.rentaiRate)}">${user.rentaiRate.toFixed(2)}%</td>
+                            <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('bustedRate', user.bustedRate)}">${user.bustedRate.toFixed(2)}%</td>
+                            <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('avgRawScore', user.avgRawScore)}">${user.avgRawScore.toLocaleString()}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            // Populate Mobile Cards
+            if (cardsContainer) {
+                cardsContainer.innerHTML = rankedUsers.map((user, index) => {
+                    const photoHtml = getPlayerPhotoHtml(user.id, 'w-12 h-12');
+                    return `
+                    <div class="cyber-card p-3" onclick="showPlayerStats('${user.id}')">
+                        <div class="flex justify-between items-center mb-3">
                             <div class="flex items-center gap-3">
+                                <span class="text-xl font-bold text-gray-400 w-8 text-center">${index + 1}</span>
                                 ${photoHtml}
-                                <span>${user.name}</span>
+                                <span class="font-bold text-lg text-blue-400">${user.name}</span>
                             </div>
-                        </td>
-                        <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right font-bold ${user.totalPoints >= 0 ? 'text-green-400' : 'text-red-400'}">${(user.totalPoints).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</td>
-                        <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right">${user.totalHanchans.toLocaleString()}</td>
-                        <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('avgRank', user.avgRank)}">${user.avgRank.toFixed(2)}</td>
-                        <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('topRate', user.topRate)}">${user.topRate.toFixed(2)}%</td>
-                        <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('secondRate', user.secondRate)}">${user.secondRate.toFixed(2)}%</td>
-                        <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('thirdRate', user.thirdRate)}">${user.thirdRate.toFixed(2)}%</td>
-                        <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('lastRate', user.lastRate)}">${user.lastRate.toFixed(2)}%</td>
-                        <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('rentaiRate', user.rentaiRate)}">${user.rentaiRate.toFixed(2)}%</td>
-                        <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('bustedRate', user.bustedRate)}">${user.bustedRate.toFixed(2)}%</td>
-                        <td class="px-2 md:px-4 py-4 whitespace-nowrap text-right ${getClass('avgRawScore', user.avgRawScore)}">${user.avgRawScore.toLocaleString()}</td>
-                    </tr>
-                `;
-            }).join('');
+                            <div class="text-right">
+                                <p class="text-xs text-gray-400">合計Pt</p>
+                                <p class="text-xl font-bold ${user.totalPoints >= 0 ? 'text-green-400' : 'text-red-400'}">${(user.totalPoints).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-3 text-center text-sm border-t border-gray-700 pt-3">
+                            <div><p class="text-xs text-gray-400">平均着順</p><p class="font-bold ${getClass('avgRank', user.avgRank)}">${user.avgRank.toFixed(2)}</p></div>
+                            <div><p class="text-xs text-gray-400">トップ率</p><p class="font-bold ${getClass('topRate', user.topRate)}">${user.topRate.toFixed(1)}%</p></div>
+                            <div><p class="text-xs text-gray-400">ラス率</p><p class="font-bold ${getClass('lastRate', user.lastRate)}">${user.lastRate.toFixed(1)}%</p></div>
+                            <div><p class="text-xs text-gray-400">半荘数</p><p class="font-bold">${user.totalHanchans}</p></div>
+                            <div><p class="text-xs text-gray-400">連対率</p><p class="font-bold ${getClass('rentaiRate', user.rentaiRate)}">${user.rentaiRate.toFixed(1)}%</p></div>
+                            <div><p class="text-xs text-gray-400">トビ率</p><p class="font-bold ${getClass('bustedRate', user.bustedRate)}">${user.bustedRate.toFixed(1)}%</p></div>
+                        </div>
+                    </div>
+                    `;
+                }).join('');
+            }
         }
 
         function renderHistoryList() {
@@ -863,6 +905,28 @@
             }
             const player = users.find(u => u.id === playerId);
             if (!player) return;
+            
+            const allStats = calculateAllPlayerStats(games);
+            const playerStats = allStats[playerId];
+            if (!playerStats) return;
+
+            const rankedUsers = Object.values(allStats).filter(u => u.totalHanchans > 0);
+
+            const getRank = (metricKey, lowerIsBetter) => {
+                if (rankedUsers.length === 0) return { rank: '-', total: 0 };
+                const sortedUsers = [...rankedUsers].sort((a, b) => {
+                    return lowerIsBetter ? a[metricKey] - b[metricKey] : b[metricKey] - a[metricKey];
+                });
+                const rank = sortedUsers.findIndex(u => u.id === playerId) + 1;
+                return { rank: rank > 0 ? rank : '-', total: rankedUsers.length };
+            };
+
+            const totalPointsRank = getRank('totalPoints', false);
+            const avgRankRank = getRank('avgRank', true);
+            const topRateRank = getRank('topRate', false);
+            const rentaiRateRank = getRank('rentaiRate', false);
+            const lastRateRank = getRank('lastRate', true);
+            const avgRawScoreRank = getRank('avgRawScore', false);
 
             const photoHtml = getPlayerPhotoHtml(playerId, 'w-20 h-20');
             
@@ -880,25 +944,35 @@
                     ${photoHtml}
                     <h3 class="cyber-header text-3xl font-bold text-blue-400">${player.name}</h3>
                 </div>
-                <div id="detailed-stats-container"></div>
+
+                <!-- Stat Cards -->
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-center mb-6">
+                    <div class="cyber-card p-3"><p class="text-sm text-gray-400">合計Pt</p><p class="text-2xl font-bold ${playerStats.totalPoints >= 0 ? 'text-green-400' : 'text-red-400'}">${playerStats.totalPoints.toFixed(1)}</p><p class="text-xs text-gray-500 mt-1">全体 ${totalPointsRank.total}人中 ${totalPointsRank.rank}位</p></div>
+                    <div class="cyber-card p-3"><p class="text-sm text-gray-400">平均着順</p><p class="text-2xl font-bold">${playerStats.avgRank.toFixed(2)}</p><p class="text-xs text-gray-500 mt-1">全体 ${avgRankRank.total}人中 ${avgRankRank.rank}位</p></div>
+                    <div class="cyber-card p-3"><p class="text-sm text-gray-400">トップ率</p><p class="text-2xl font-bold text-green-400">${playerStats.topRate.toFixed(1)}%</p><p class="text-xs text-gray-500 mt-1">全体 ${topRateRank.total}人中 ${topRateRank.rank}位</p></div>
+                    <div class="cyber-card p-3"><p class="text-sm text-gray-400">連対率</p><p class="text-2xl font-bold">${playerStats.rentaiRate.toFixed(1)}%</p><p class="text-xs text-gray-500 mt-1">全体 ${rentaiRateRank.total}人中 ${rentaiRateRank.rank}位</p></div>
+                    <div class="cyber-card p-3"><p class="text-sm text-gray-400">ラス率</p><p class="text-2xl font-bold text-red-400">${playerStats.lastRate.toFixed(1)}%</p><p class="text-xs text-gray-500 mt-1">全体 ${lastRateRank.total}人中 ${lastRateRank.rank}位</p></div>
+                    <div class="cyber-card p-3"><p class="text-sm text-gray-400">平均素点</p><p class="text-2xl font-bold">${playerStats.avgRawScore.toLocaleString()}</p><p class="text-xs text-gray-500 mt-1">全体 ${avgRawScoreRank.total}人中 ${avgRawScoreRank.rank}位</p></div>
+                </div>
+
                 <div class="cyber-card p-4 mb-6">
                     <h4 class="font-bold mb-2">比較対象</h4>
                     <div id="comparison-checkboxes" class="flex flex-wrap">${comparisonOptions}</div>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <div class="cyber-card p-4 sm:p-6">
                         <h3 class="cyber-header text-xl font-bold mb-4 text-center">順位分布</h3>
-                        <div class="w-full h-64 mx-auto"><canvas id="rank-chart"></canvas></div>
+                        <div class="w-full h-64 mx-auto"><canvas id="rank-chart-personal"></canvas></div>
                     </div>
                     <div class="cyber-card p-4 sm:p-6">
                         <h3 class="cyber-header text-xl font-bold mb-4 text-center">ポイント推移</h3>
-                        <div class="w-full h-64 mx-auto"><canvas id="point-history-chart"></canvas></div>
+                        <div class="w-full h-64 mx-auto"><canvas id="point-history-chart-personal"></canvas></div>
                     </div>
                 </div>
                 <div id="player-history-container" class="cyber-card p-4 sm:p-6"></div>
             `;
             
-            renderDetailedStats(playerId);
             renderStatsCharts(playerId, []);
             renderPlayerHistoryTable(playerId);
         }
@@ -909,29 +983,6 @@
             renderStatsCharts(mainPlayerId, comparisonIds);
         };
 
-        function renderDetailedStats(playerId) {
-            const container = document.getElementById('detailed-stats-container');
-            if (!container) return;
-            const allStats = calculateAllPlayerStats(games);
-            const playerStats = allStats[playerId];
-            if (!playerStats) return;
-            
-            const totalHanchans = playerStats.totalHanchans;
-            const lastRate = totalHanchans > 0 ? (playerStats.ranks[3] / totalHanchans) * 100 : 0;
-            const bustedRate = totalHanchans > 0 ? (playerStats.bustedCount / totalHanchans) * 100 : 0;
-            const avgRawScore = totalHanchans > 0 ? Math.round((playerStats.totalRawScore / totalHanchans) / 100) * 100 : 0;
-            
-            container.innerHTML = `
-                <div class="cyber-card p-6 mb-6">
-                    <div class="grid grid-cols-3 gap-4 text-center">
-                        <div><p class="text-sm text-gray-400">平均素点</p><p class="text-2xl font-bold text-blue-400 font-m-gothic">${avgRawScore.toLocaleString()}</p></div>
-                        <div><p class="text-sm text-gray-400">ラス率</p><p class="text-2xl font-bold text-red-400 font-m-gothic">${lastRate.toFixed(2)}%</p></div>
-                        <div><p class="text-sm text-gray-400">トビ率</p><p class="text-2xl font-bold text-red-500 font-m-gothic">${bustedRate.toFixed(2)}%</p></div>
-                    </div>
-                </div>
-            `;
-        }
-        
         function renderPlayerHistoryTable(playerId) {
             const container = document.getElementById('player-history-container');
             if (!container) return;
@@ -973,9 +1024,9 @@
             }
 
             let tableHtml = `<h3 class="cyber-header text-xl font-bold mb-4 text-center">対局履歴</h3>
-                <div class="overflow-x-auto">
+                <div class="overflow-x-auto max-h-96">
                     <table class="min-w-full divide-y divide-gray-700 text-sm">
-                        <thead class="bg-gray-900"><tr>
+                        <thead class="bg-gray-900 sticky top-0"><tr>
                             <th class="px-4 py-2 text-left">日時</th>
                             <th class="px-4 py-2 text-right">着順</th>
                             <th class="px-4 py-2 text-right">素点</th>
@@ -1000,53 +1051,69 @@
             const allStats = calculateAllPlayerStats(games);
             const colors = ['#58a6ff', '#52c569', '#f5655f', '#f2cc8f', '#e0aaff', '#9bf6ff'];
             
-            const pointHistoryDatasets = [];
-            const mainPlayerData = getPlayerPointHistory(mainPlayerId);
-            pointHistoryDatasets.push({
-                label: allStats[mainPlayerId].name,
-                data: mainPlayerData.map(d => d.points),
-                borderColor: colors[0],
-                backgroundColor: colors[0] + '33',
-                fill: true, tension: 0.1
-            });
-            comparisonIds.forEach((id, index) => {
-                const playerData = getPlayerPointHistory(id);
+            // --- Point History Chart (Personal Tab) ---
+            const personalChartCanvas = document.getElementById('point-history-chart-personal');
+            if (personalChartCanvas) {
+                const playerIdsForChart = [mainPlayerId, ...comparisonIds];
+                const relevantGames = games.filter(g => g.playerIds.some(pId => playerIdsForChart.includes(pId)));
+                const dateStrings = relevantGames.map(g => g.gameDate.split('(')[0]);
+                const today = new Date();
+                const todayString = `${today.getFullYear()}/${today.getMonth() + 1}/${today.getDate()}`;
+                dateStrings.push(todayString);
+                const fullTimeline = [...new Set(dateStrings)].sort((a, b) => new Date(a) - new Date(b));
+
+                const pointHistoryDatasets = [];
+                const mainPlayerData = getPlayerPointHistory(mainPlayerId, fullTimeline);
                 pointHistoryDatasets.push({
-                    label: allStats[id].name,
-                    data: playerData.map(d => d.points),
-                    borderColor: colors[(index + 1) % colors.length],
-                    backgroundColor: colors[(index + 1) % colors.length] + '33',
+                    label: allStats[mainPlayerId].name,
+                    data: mainPlayerData,
+                    borderColor: colors[0],
+                    backgroundColor: colors[0] + '33',
                     fill: true, tension: 0.1
                 });
-            });
-
-            if (pointHistoryChart) pointHistoryChart.destroy();
-            pointHistoryChart = new Chart(document.getElementById('point-history-chart').getContext('2d'), {
-                type: 'line',
-                data: { labels: mainPlayerData.map(d => d.date), datasets: pointHistoryDatasets },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#c9d1d9' }}}, scales: { x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } }, y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } } } }
-            });
-
-            const rankDatasets = [];
-            rankDatasets.push({
-                label: allStats[mainPlayerId].name,
-                data: allStats[mainPlayerId].ranks,
-                backgroundColor: colors[0],
-            });
-            comparisonIds.forEach((id, index) => {
-                rankDatasets.push({
-                    label: allStats[id].name,
-                    data: allStats[id].ranks,
-                    backgroundColor: colors[(index + 1) % colors.length],
+                comparisonIds.forEach((id, index) => {
+                    const playerData = getPlayerPointHistory(id, fullTimeline);
+                    pointHistoryDatasets.push({
+                        label: allStats[id].name,
+                        data: playerData,
+                        borderColor: colors[(index + 1) % colors.length],
+                        backgroundColor: colors[(index + 1) % colors.length] + '33',
+                        fill: true, tension: 0.1
+                    });
                 });
-            });
 
-            if (rankChart) rankChart.destroy();
-            rankChart = new Chart(document.getElementById('rank-chart').getContext('2d'), {
-                type: 'bar',
-                data: { labels: ['1位', '2位', '3位', '4位'], datasets: rankDatasets },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { color: '#c9d1d9' }}}, scales: { x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } }, y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } } } }
-            });
+                if (personalPointHistoryChart) personalPointHistoryChart.destroy();
+                personalPointHistoryChart = new Chart(personalChartCanvas.getContext('2d'), {
+                    type: 'line',
+                    data: { labels: fullTimeline, datasets: pointHistoryDatasets },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#c9d1d9' }}}, scales: { x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } }, y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } } } }
+                });
+            }
+
+            // --- Rank Distribution Chart (Personal Tab) ---
+            const rankChartCanvas = document.getElementById('rank-chart-personal');
+            if(rankChartCanvas) {
+                const rankDatasets = [];
+                rankDatasets.push({
+                    label: allStats[mainPlayerId].name,
+                    data: allStats[mainPlayerId].ranks,
+                    backgroundColor: colors[0],
+                });
+                comparisonIds.forEach((id, index) => {
+                    rankDatasets.push({
+                        label: allStats[id].name,
+                        data: allStats[id].ranks,
+                        backgroundColor: colors[(index + 1) % colors.length],
+                    });
+                });
+
+                if (personalRankChart) personalRankChart.destroy();
+                personalRankChart = new Chart(rankChartCanvas.getContext('2d'), {
+                    type: 'bar',
+                    data: { labels: ['1位', '2位', '3位', '4位'], datasets: rankDatasets },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { color: '#c9d1d9' }}}, scales: { x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } }, y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } } } }
+                });
+            }
         }
         
         window.updateDataAnalysisCharts = function() {
@@ -1100,7 +1167,7 @@
                 let highestDaily = { pt: -Infinity, name: '', id: '' };
                 Object.values(dailyPoints).forEach(day => Object.entries(day).forEach(([pId, pt]) => {
                      if (pt > highestDaily.pt) {
-                        highestDaily = { pt, name: users.find(u=>u.id===pId)?.name, id: pId };
+                         highestDaily = { pt, name: users.find(u=>u.id===pId)?.name, id: pId };
                     }
                 }));
 
@@ -1189,24 +1256,27 @@
                     data: history,
                     borderColor: colors[index % colors.length],
                     backgroundColor: colors[index % colors.length] + '33',
-                    fill: false, tension: 0.1,
-                    stepped: 'before'
+                    fill: true, 
+                    tension: 0.1
                 }
             });
 
-            if (pointHistoryChart) pointHistoryChart.destroy();
-            pointHistoryChart = new Chart(document.getElementById('point-history-chart').getContext('2d'), {
-                type: 'line',
-                data: { labels: fullTimeline, datasets: pointHistoryDatasets },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#c9d1d9' }}}, scales: { x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } }, y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } } } }
-            });
+            const pointHistoryCanvas = document.getElementById('point-history-chart');
+            if (pointHistoryCanvas) {
+                if (pointHistoryChart) pointHistoryChart.destroy();
+                pointHistoryChart = new Chart(pointHistoryCanvas.getContext('2d'), {
+                    type: 'line',
+                    data: { labels: fullTimeline, datasets: pointHistoryDatasets },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#c9d1d9' }}}, scales: { x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } }, y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } } } }
+                });
+            }
 
             // --- 4. Bar Chart ---
             const barChartMetricSelect = document.getElementById('bar-chart-metric-select');
             const metrics = { 'totalPoints': '合計Pt', 'avgRawScore': '平均素点', 'topRate': 'トップ率', 'lastRate': 'ラス率', 'rentaiRate': '連対率', 'bustedRate': 'トビ率', 'avgRank': '平均順位' };
             if (barChartMetricSelect.options.length === 0) {
                  Object.entries(metrics).forEach(([key, value]) => {
-                    barChartMetricSelect.add(new Option(value, key));
+                     barChartMetricSelect.add(new Option(value, key));
                 });
             }
             const selectedMetric = barChartMetricSelect.value || 'totalPoints';
