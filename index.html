@@ -24,9 +24,7 @@
             --accent-yellow: #E2FF08;
             --accent-glow: rgba(88, 166, 255, 0.5);
         }
-        html {
-            scroll-behavior: smooth;
-        }
+        html { scroll-behavior: smooth; }
         body {
             font-family: '"MS PGothic", "ＭＳ Ｐゴシック", sans-serif';
             background-color: var(--bg-dark);
@@ -150,6 +148,8 @@
                     <button onclick="changeTab('data-analysis')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">データ分析</button>
                     <button onclick="changeTab('personal-stats')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">個人成績</button>
                     <button onclick="changeTab('history')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">対局履歴</button>
+                    <button onclick="changeTab('yakuman')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">役満記録</button>
+                    <button onclick="changeTab('head-to-head')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">直接対決</button>
                     <button onclick="changeTab('history-raw')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">詳細履歴(素点)</button>
                     <button onclick="changeTab('history-pt')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">詳細履歴(PT)</button>
                     <button onclick="changeTab('users')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">雀士管理</button>
@@ -164,6 +164,8 @@
             <div id="data-analysis-tab" class="hidden"></div>
             <div id="personal-stats-tab" class="hidden cyber-card p-2 sm:p-6"></div>
             <div id="history-tab" class="hidden cyber-card p-2 sm:p-6"></div>
+            <div id="yakuman-tab" class="hidden cyber-card p-2 sm:p-6"></div>
+            <div id="head-to-head-tab" class="hidden cyber-card p-2 sm:p-6"></div>
             <div id="history-raw-tab" class="hidden cyber-card p-2 sm:p-6"></div>
             <div id="history-pt-tab" class="hidden cyber-card p-2 sm:p-6"></div>
             <div id="users-tab" class="hidden cyber-card p-2 sm:p-6"></div>
@@ -190,9 +192,9 @@
         let selectedPlayers = []; // {id, name, photoURL}
         let hanchanScores = [];   // Holds scores for each hanchan
         let activeInputId = null; // Holds the ID of the active score input in the modal
-        
+        let editingGameId = null; // ID of the game being edited
+
         // --- Performance Refactor: Cached Stats ---
-        // Store calculated stats to avoid recalculating on every render.
         let cachedStats = {};
 
         // Chart instances
@@ -202,6 +204,12 @@
         let personalRankChart = null;
         let personalPointHistoryChart = null;
         
+        // --- Constants ---
+        const YAKUMAN_LIST = [
+            '国士無双', '四暗刻', '大三元', '緑一色', '字一色', '清老頭', '九蓮宝燈', '四槓子', '天和', '地和',
+            '国士無双十三面待ち', '四暗刻単騎', '純正九蓮宝燈', '大四喜', '小四喜'
+        ];
+
         // --- Firebase Config ---
         const firebaseConfig = {
             apiKey: "AIzaSyBwWqWxRy5JlcQwbc5KAXRvH0swd0pOzSg",
@@ -240,10 +248,10 @@
         function calculateAllPlayerStats(gamesToCalculate) {
             const stats = {};
             users.forEach(u => {
-                stats[u.id] = { id: u.id, name: u.name, photoURL: u.photoURL, totalPoints: 0, gameCount: 0, ranks: [0, 0, 0, 0], bustedCount: 0, totalRawScore: 0, totalHanchans: 0 };
+                stats[u.id] = { id: u.id, name: u.name, photoURL: u.photoURL, totalPoints: 0, gameCount: 0, ranks: [0, 0, 0, 0], bustedCount: 0, totalRawScore: 0, totalHanchans: 0, yakumanCount: 0 };
             });
 
-            const sortedGames = [...gamesToCalculate].sort((a, b) => a.createdAt.seconds - b.createdAt.seconds);
+            const sortedGames = [...gamesToCalculate].sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
 
             sortedGames.forEach(game => {
                 game.playerIds.forEach(pId => { if (stats[pId]) stats[pId].gameCount++; });
@@ -278,6 +286,14 @@
                     Object.keys(hanchan.rawScores).forEach(pId => {
                         if(stats[pId]) stats[pId].totalHanchans++;
                     });
+
+                    if (hanchan.yakumans) {
+                        hanchan.yakumans.forEach(y => {
+                            if (stats[y.playerId]) {
+                                stats[y.playerId].yakumanCount++;
+                            }
+                        });
+                    }
                 });
             });
 
@@ -350,26 +366,23 @@
             renderPersonalStatsTab();
             renderUserManagementTab();
             renderDetailedHistoryTabContainers();
+            renderYakumanTab();
+            renderHeadToHeadTab();
         }
 
         /**
          * Performance Refactor: Master update function.
-         * This function is called whenever users or games data changes.
-         * It recalculates all stats once and then triggers all necessary UI updates.
-         * This prevents redundant calculations across different components.
          */
         function updateAllCalculationsAndViews() {
-            // Step 1: Recalculate all stats and cache the result.
             cachedStats = calculateAllPlayerStats(games);
 
-            // Step 2: Update all visible components with the new cached data.
             updateLeaderboard();
             renderHistoryList();
             renderDetailedHistoryTables();
             renderUserManagementList();
-            renderPersonalStatsTab(); // To update the user dropdown
-
-            // Update specific views if they are active
+            renderPersonalStatsTab();
+            renderYakumanList();
+            
             const activeTab = document.querySelector('.tab-btn.active').getAttribute('onclick').match(/'([^']+)'/)[1];
             
             if (activeTab === 'data-analysis') {
@@ -380,14 +393,14 @@
                     displayPlayerStats(playerId);
                 }
             } else if (activeTab === 'game') {
-                 // Update player selection list if users change while on the game tab
                 if (document.getElementById('step2-rule-settings')?.classList.contains('hidden')) {
                     renderPlayerSelection();
                 }
-                // Re-render score display if it's visible to show updated names/photos
                 if(!document.getElementById('step3-score-input').classList.contains('hidden')) {
                     renderScoreDisplay();
                 }
+            } else if (activeTab === 'head-to-head') {
+                renderHeadToHeadTab(); // Re-render to update dropdowns
             }
         }
 
@@ -400,7 +413,6 @@
                 users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 users.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
                 
-                // Update selectedPlayers array with fresh user data
                 selectedPlayers = selectedPlayers.map(sp => {
                     const updatedUser = users.find(u => u.id === sp.id);
                     return updatedUser ? { id: updatedUser.id, name: updatedUser.name, photoURL: updatedUser.photoURL } : sp;
@@ -425,14 +437,13 @@
             if (user && user.photoURL) {
                 return `<img src="${user.photoURL}" class="${sizeClass} rounded-full object-cover bg-gray-800" alt="${user.name}" onerror="this.onerror=null;this.src='https://placehold.co/100x100/010409/8b949e?text=?';">`;
             }
-            // Placeholder
             return `<div class="${sizeClass} rounded-full bg-gray-700 flex items-center justify-center">
                         <i class="fas fa-user text-gray-500" style="font-size: ${fontSize}px;"></i>
                     </div>`;
         }
         
         window.changeTab = (tabName) => {
-            ['game', 'leaderboard', 'data-analysis', 'personal-stats', 'history', 'history-raw', 'history-pt', 'users'].forEach(tab => {
+            ['game', 'leaderboard', 'data-analysis', 'personal-stats', 'history', 'yakuman', 'head-to-head', 'history-raw', 'history-pt', 'users'].forEach(tab => {
                 document.getElementById(`${tab}-tab`).classList.add('hidden');
                 const btn = document.querySelector(`.tab-btn[onclick="changeTab('${tab}')"]`);
                 if(btn) btn.classList.remove('active');
@@ -443,8 +454,10 @@
 
             if (tabName === 'data-analysis') {
                 updateDataAnalysisCharts();
-            } else if (tabName === 'game') {
+            } else if (tabName === 'game' && editingGameId === null) {
                 loadSavedGameData();
+            } else if (tabName === 'head-to-head') {
+                displayHeadToHeadStats();
             }
         };
 
@@ -504,7 +517,7 @@
                          <button onclick="showCurrentPtStatus()" class="cyber-btn px-4 py-2 rounded-lg order-first sm:order-none w-full sm:w-auto"><i class="fas fa-calculator mr-2"></i>現在のPT状況</button>
                          <div class="flex gap-2 w-full sm:w-auto">
                              <button onclick="backToStep2()" class="cyber-btn px-6 py-2 rounded-lg w-full"><i class="fas fa-arrow-left mr-2"></i>戻る</button>
-                             <button onclick="calculateAndSave()" class="cyber-btn cyber-btn-yellow px-6 py-2 rounded-lg w-full"><i class="fas fa-save mr-2"></i>Pt変換して保存</button>
+                             <button id="save-game-btn" onclick="calculateAndSave()" class="cyber-btn cyber-btn-yellow px-6 py-2 rounded-lg w-full"><i class="fas fa-save mr-2"></i>Pt変換して保存</button>
                          </div>
                      </div>
                 </div>
@@ -630,6 +643,39 @@
                 </div>
             `;
         }
+
+        function renderYakumanTab() {
+            const container = document.getElementById('yakuman-tab');
+            container.innerHTML = `
+                <h2 class="cyber-header text-2xl font-bold text-blue-400 border-b border-gray-700 pb-2 mb-4">役満記録</h2>
+                <div id="yakuman-list" class="space-y-3">
+                    <p class="text-gray-500">まだ役満は記録されていません。</p>
+                </div>
+            `;
+        }
+
+        function renderHeadToHeadTab() {
+            const container = document.getElementById('head-to-head-tab');
+            const playerOptions = users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+            container.innerHTML = `
+                <h2 class="cyber-header text-2xl font-bold text-blue-400 border-b border-gray-700 pb-2 mb-4">直接対決</h2>
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
+                    <select id="h2h-player1" class="p-2 rounded-md" onchange="displayHeadToHeadStats()">
+                        <option value="">雀士1を選択</option>
+                        ${playerOptions}
+                    </select>
+                    <span class="font-bold text-xl">VS</span>
+                    <select id="h2h-player2" class="p-2 rounded-md" onchange="displayHeadToHeadStats()">
+                        <option value="">雀士2を選択</option>
+                        ${playerOptions}
+                    </select>
+                </div>
+                <div id="h2h-results" class="text-center">
+                    <p class="text-gray-500">比較したい雀士を2名選択してください。</p>
+                </div>
+            `;
+        }
+
 
         // --- Component Rendering ---
         
@@ -815,7 +861,7 @@
                                 <p class="font-bold text-lg">${date}</p>
                                 <p class="text-sm text-gray-400">${game.playerNames.join(', ')}</p>
                             </div>
-                            <div class="flex justify-between w-full sm:w-auto">
+                            <div class="flex justify-between w-full sm:w-auto items-center">
                                 <div class="text-left sm:text-right mr-4 cursor-pointer flex items-center gap-2" onclick="showGameDetails('${game.id}')">
                                     ${photoHtml}
                                     <div>
@@ -823,7 +869,10 @@
                                         <p class="font-bold text-green-400">${winnerUser ? winnerUser.name : 'N/A'} (+${winnerEntry[1].toFixed(1)})</p>
                                     </div>
                                 </div>
-                                <button onclick="confirmDeleteGame('${game.id}', '${date}')" class="text-red-500 hover:text-red-400 text-lg p-2 self-center"><i class="fas fa-trash-alt"></i></button>
+                                <div class="flex gap-2">
+                                    <button onclick="editGame('${game.id}')" class="text-blue-400 hover:text-blue-300 text-lg p-2 self-center"><i class="fas fa-edit"></i></button>
+                                    <button onclick="confirmDeleteGame('${game.id}', '${date}')" class="text-red-500 hover:text-red-400 text-lg p-2 self-center"><i class="fas fa-trash-alt"></i></button>
+                                </div>
                             </div>
                         </div>
                     `;
@@ -906,6 +955,53 @@
             
             rawListContainer.innerHTML = createTable('rawScores');
             ptListContainer.innerHTML = createTable('points');
+        }
+
+        function renderYakumanList() {
+            const container = document.getElementById('yakuman-list');
+            if (!container) return;
+
+            const allYakumans = [];
+            games.forEach(game => {
+                if (game.scores) {
+                    game.scores.forEach((hanchan, index) => {
+                        if (hanchan.yakumans && hanchan.yakumans.length > 0) {
+                            hanchan.yakumans.forEach(y => {
+                                allYakumans.push({
+                                    ...y,
+                                    date: game.gameDate,
+                                    hanchanNum: index + 1,
+                                    gameId: game.id
+                                });
+                            });
+                        }
+                    });
+                }
+            });
+
+            if (allYakumans.length === 0) {
+                container.innerHTML = `<p class="text-gray-500">まだ役満は記録されていません。</p>`;
+                return;
+            }
+
+            container.innerHTML = allYakumans.sort((a,b) => new Date(b.date.split('(')[0]) - new Date(a.date.split('(')[0])).map(y => {
+                const user = users.find(u => u.id === y.playerId);
+                const photoHtml = getPlayerPhotoHtml(y.playerId, 'w-10 h-10');
+                return `
+                    <div class="bg-gray-900 p-3 rounded-lg border border-gray-700 flex items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            ${photoHtml}
+                            <div>
+                                <p class="font-bold text-blue-400">${user ? user.name : '不明'}</p>
+                                <p class="text-xs text-gray-400">${y.date}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-lg font-bold text-yellow-400 glowing-text">${y.yakumanName}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         // --- Stats Page ---
@@ -1311,7 +1407,7 @@
 
             // --- 4. Bar Chart ---
             const barChartMetricSelect = document.getElementById('bar-chart-metric-select');
-            const metrics = { 'totalPoints': '合計Pt', 'avgRawScore': '平均素点', 'topRate': 'トップ率', 'lastRate': 'ラス率', 'rentaiRate': '連対率', 'bustedRate': 'トビ率', 'avgRank': '平均順位' };
+            const metrics = { 'totalPoints': '合計Pt', 'avgRawScore': '平均素点', 'topRate': 'トップ率', 'lastRate': 'ラス率', 'rentaiRate': '連対率', 'bustedRate': 'トビ率', 'avgRank': '平均順位', 'yakumanCount': '役満回数' };
             if (barChartMetricSelect.options.length === 0) {
                  Object.entries(metrics).forEach(([key, value]) => {
                      barChartMetricSelect.add(new Option(value, key));
@@ -1339,7 +1435,7 @@
                         }),
                         borderColor: sortedBarUsers.map((u, i) => {
                              const rankIndex = allPlayers.findIndex(p => p.id === u.id);
-                            return colors[rankIndex % colors.length];
+                             return colors[rankIndex % colors.length];
                         }),
                         borderWidth: 1
                     }]
@@ -1382,13 +1478,11 @@
                 const userDocRef = doc(db, 'users', userId);
                 await updateDoc(userDocRef, { photoURL: downloadURL });
                 
-                // The onSnapshot listener will automatically update the UI.
-                // Close the modal on success. The user will see the image change.
                 closeModal();
 
             } catch (error) {
                 console.error("Photo upload failed:", error);
-                showModalMessage("写真のアップロードに失敗しました。"); // Show error with a close button.
+                showModalMessage("写真のアップロードに失敗しました。");
             }
         };
 
@@ -1424,7 +1518,7 @@
                 input.focus();
                 input.setSelectionRange(input.value.length, input.value.length);
                 editBtn.innerHTML = '<i class="fas fa-save"></i>';
-                editBtn.classList.add('themed-btn-green');
+                editBtn.classList.add('cyber-btn-green');
             } else {
                 const newName = input.value.trim();
 
@@ -1450,7 +1544,7 @@
                 
                 input.readOnly = true;
                 editBtn.innerHTML = '<i class="fas fa-edit"></i>';
-                editBtn.classList.remove('themed-btn-green');
+                editBtn.classList.remove('cyber-btn-green');
             }
         };
 
@@ -1458,11 +1552,11 @@
             const user = users.find(u => u.id === id);
             if (!user) return;
             showModal(`
-                <h3 class="luxury-header text-xl font-bold text-red-400 mb-4">削除確認</h3>
+                <h3 class="cyber-header text-xl font-bold text-red-400 mb-4">削除確認</h3>
                 <p>「${user.name}」を削除しますか？<br>関連する全ての対局データも永久に削除されます。この操作は元に戻せません。</p>
                 <div class="flex justify-end gap-4 mt-6">
-                    <button onclick="closeModal()" class="themed-btn px-4 py-2">キャンセル</button>
-                    <button onclick="executeDeleteUser('${id}')" class="themed-btn themed-btn-red px-4 py-2">削除実行</button>
+                    <button onclick="closeModal()" class="cyber-btn px-4 py-2">キャンセル</button>
+                    <button onclick="executeDeleteUser('${id}')" class="cyber-btn-red px-4 py-2">削除実行</button>
                 </div>
             `);
         };
@@ -1484,11 +1578,11 @@
         
         window.confirmDeleteGame = (gameId, date) => {
             showModal(`
-                <h3 class="luxury-header text-xl font-bold text-red-400 mb-4">対局履歴 削除確認</h3>
+                <h3 class="cyber-header text-xl font-bold text-red-400 mb-4">対局履歴 削除確認</h3>
                 <p>${date} の対局データを削除しますか？<br>この操作は元に戻せません。</p>
                 <div class="flex justify-end gap-4 mt-6">
-                    <button onclick="closeModal()" class="themed-btn px-4 py-2">キャンセル</button>
-                    <button onclick="executeDeleteGame('${gameId}')" class="themed-btn themed-btn-red px-4 py-2">削除実行</button>
+                    <button onclick="closeModal()" class="cyber-btn px-4 py-2">キャンセル</button>
+                    <button onclick="executeDeleteGame('${gameId}')" class="cyber-btn-red px-4 py-2">削除実行</button>
                 </div>
             `);
         };
@@ -1502,6 +1596,57 @@
                 console.error("Error deleting game: ", error);
                 showModalMessage("対局データの削除に失敗しました。");
             }
+        };
+
+        window.editGame = (gameId) => {
+            const game = games.find(g => g.id === gameId);
+            if (!game) {
+                showModalMessage("ゲームが見つかりません。");
+                return;
+            }
+
+            // Set global state
+            editingGameId = gameId;
+            selectedPlayers = game.playerIds.map(pId => {
+                const user = users.find(u => u.id === pId);
+                return { id: user.id, name: user.name, photoURL: user.photoURL };
+            });
+            hanchanScores = game.scores.map(s => ({
+                rawScores: s.rawScores,
+                yakumans: s.yakumans || []
+            }));
+
+            // Switch to game tab
+            changeTab('game');
+
+            // --- Populate Step 1 (and lock it) ---
+            renderPlayerSelection();
+            document.getElementById('to-step2-btn').disabled = false;
+            lockUnlockStep(1, true);
+
+            // --- Populate Step 2 (and lock it) ---
+            document.getElementById('step2-rule-settings').classList.remove('hidden');
+            document.getElementById('base-point').value = game.settings.basePoint;
+            document.getElementById('return-point').value = game.settings.returnPoint;
+            document.getElementById('uma-1').value = game.settings.uma[0];
+            document.getElementById('uma-2').value = game.settings.uma[1];
+            document.getElementById('uma-3').value = game.settings.uma[2];
+            document.getElementById('uma-4').value = game.settings.uma[3];
+            updateOkaDisplay();
+            lockUnlockStep(2, true);
+
+            // --- Populate Step 3 ---
+            document.getElementById('step3-score-input').classList.remove('hidden');
+            document.getElementById('game-date').value = game.gameDate;
+            renderScoreDisplay();
+            
+            // Update save button
+            const saveBtn = document.getElementById('save-game-btn');
+            saveBtn.innerHTML = `<i class="fas fa-sync-alt mr-2"></i>Pt変換して更新`;
+            saveBtn.classList.remove('cyber-btn-yellow');
+            saveBtn.classList.add('cyber-btn-green');
+
+            document.getElementById('step3-score-input').scrollIntoView({ behavior: 'smooth', block: 'start' });
         };
         
         // --- Game Flow Functions ---
@@ -1571,7 +1716,8 @@
         function renderScoreDisplay() {
             const container = document.getElementById('score-display-area');
             if (!container) return;
-            container.innerHTML = hanchanScores.map((scores, index) => {
+            container.innerHTML = hanchanScores.map((hanchan, index) => {
+                const scores = hanchan.rawScores;
                 const total = Object.values(scores).reduce((sum, score) => sum + (Number(score) || 0), 0);
                 const basePoint = Number(document.getElementById('base-point').value);
                 const isComplete = Object.values(scores).every(s => s !== null && s !== '');
@@ -1579,13 +1725,22 @@
 
                 const { points, rawRanks, pointRanks } = calculateHanchanRanksAndPoints(scores);
 
+                const yakumanHtml = (hanchan.yakumans && hanchan.yakumans.length > 0)
+                    ? `<div class="mt-2 border-t border-gray-700 pt-2">
+                        ${hanchan.yakumans.map(y => {
+                            const user = users.find(u => u.id === y.playerId);
+                            return `<span class="text-xs inline-block bg-yellow-900 text-yellow-300 rounded-full px-2 py-1 mr-1 mb-1">${user ? user.name : ''}: ${y.yakumanName}</span>`
+                        }).join('')}
+                       </div>`
+                    : '';
+
                 return `
-                <div class="themed-card p-3" id="hanchan-display-${index}">
+                <div class="cyber-card p-3" id="hanchan-display-${index}">
                     <div class="flex justify-between items-center mb-2">
                         <h4 class="font-bold text-lg">半荘 #${index + 1}</h4>
                         <div class="flex gap-2">
-                            <button onclick="openScoreInputModal(${index})" class="themed-btn px-3 py-1 text-sm"><i class="fas fa-edit mr-1"></i>編集</button>
-                            <button onclick="deleteHanchan(${index})" class="themed-btn themed-btn-red px-3 py-1 text-sm"><i class="fas fa-trash"></i></button>
+                            <button onclick="openScoreInputModal(${index})" class="cyber-btn px-3 py-1 text-sm"><i class="fas fa-edit mr-1"></i>編集</button>
+                            <button onclick="deleteHanchan(${index})" class="cyber-btn-red px-3 py-1 text-sm"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
                     <div class="overflow-x-auto">
@@ -1621,6 +1776,7 @@
                                 </tr>
                             </tfoot>
                         </table>
+                        ${yakumanHtml}
                     </div>
                 </div>
                 `;
@@ -1633,9 +1789,9 @@
         }
 
         window.addHanchan = () => {
-            const newHanchan = {};
+            const newHanchan = { rawScores: {}, yakumans: [] };
             selectedPlayers.forEach(p => {
-                newHanchan[p.id] = null;
+                newHanchan.rawScores[p.id] = null;
             });
             hanchanScores.push(newHanchan);
             renderScoreDisplay();
@@ -1654,19 +1810,23 @@
         };
 
         window.openScoreInputModal = (index) => {
-            const scores = hanchanScores[index];
+            const hanchan = hanchanScores[index];
+            const scores = hanchan.rawScores;
             
             const modalHtml = `
-                <h3 class="luxury-header text-xl font-bold text-yellow-300 mb-4">半荘 #${index + 1} スコア入力</h3>
+                <h3 class="cyber-header text-xl font-bold text-yellow-300 mb-4">半荘 #${index + 1} スコア入力</h3>
                 <div class="grid md:grid-cols-2 gap-4">
                     <!-- Score Inputs -->
                     <div class="space-y-3">
                         ${selectedPlayers.map(p => `
                             <div>
-                                <label class="flex items-center gap-2 mb-1">
-                                    ${getPlayerPhotoHtml(p.id, 'w-8 h-8')}
-                                    <span class="text-sm font-medium text-gray-400">${p.name}</span>
-                                </label>
+                                <div class="flex justify-between items-center mb-1">
+                                    <label class="flex items-center gap-2">
+                                        ${getPlayerPhotoHtml(p.id, 'w-8 h-8')}
+                                        <span class="text-sm font-medium text-gray-400">${p.name}</span>
+                                    </label>
+                                    <button onclick="openYakumanSelectorModal(${index}, '${p.id}')" class="cyber-btn text-xs px-2 py-1 rounded-md">＋役満</button>
+                                </div>
                                 <input type="text" id="modal-score-${p.id}" 
                                        class="modal-score-input block w-full shadow-sm sm:text-lg p-2 text-right border-2 border-transparent bg-zinc-800" 
                                        value="${scores[p.id] !== null ? scores[p.id] : ''}" 
@@ -1675,23 +1835,23 @@
                             </div>
                         `).join('')}
                          <div>
-                            <label class="block text-sm font-medium text-gray-400 mt-2">合計</label>
-                            <div id="modal-total-score" class="mt-1 block w-full bg-zinc-900 p-2 text-right sm:text-lg font-bold">0</div>
-                        </div>
+                             <label class="block text-sm font-medium text-gray-400 mt-2">合計</label>
+                             <div id="modal-total-score" class="mt-1 block w-full bg-zinc-900 p-2 text-right sm:text-lg font-bold">0</div>
+                         </div>
                     </div>
                     <!-- Numeric Keypad -->
                     <div class="grid grid-cols-3 gap-2">
                         ${[7, 8, 9, 4, 5, 6, 1, 2, 3, 0, '00', '000'].map(key => `
-                            <button onclick="keypadInput('${key}')" class="themed-btn aspect-square text-xl md:text-2xl font-bold">${key}</button>
+                            <button onclick="keypadInput('${key}')" class="cyber-btn aspect-square text-xl md:text-2xl font-bold">${key}</button>
                         `).join('')}
-                        <button onclick="keypadInput('マイナス')" class="themed-btn aspect-square text-xl md:text-2xl font-bold">-</button>
-                        <button onclick="keypadInput('C')" class="themed-btn themed-btn-red aspect-square text-xl md:text-2xl font-bold">C</button>
-                        <button onclick="keypadInput('auto')" class="themed-btn themed-btn-green aspect-square text-lg md:text-xl font-bold">AUTO</button>
+                        <button onclick="keypadInput('マイナス')" class="cyber-btn aspect-square text-xl md:text-2xl font-bold">-</button>
+                        <button onclick="keypadInput('C')" class="cyber-btn-red aspect-square text-xl md:text-2xl font-bold">C</button>
+                        <button onclick="keypadInput('auto')" class="cyber-btn-green aspect-square text-lg md:text-xl font-bold">AUTO</button>
                     </div>
                 </div>
                 <div class="flex justify-end gap-4 mt-6">
-                    <button onclick="closeModal()" class="themed-btn px-4 py-2">キャンセル</button>
-                    <button onclick="saveScoresFromModal(${index})" class="themed-btn px-4 py-2" style="border-color: var(--accent-yellow); color: var(--accent-yellow);">保存</button>
+                    <button onclick="closeModal()" class="cyber-btn px-4 py-2">キャンセル</button>
+                    <button onclick="saveScoresFromModal(${index})" class="cyber-btn-yellow px-4 py-2">保存</button>
                 </div>
             `;
             showModal(modalHtml);
@@ -1699,6 +1859,34 @@
             setActiveInput(`modal-score-${selectedPlayers[0].id}`);
             updateModalTotal();
         };
+
+        window.openYakumanSelectorModal = (hanchanIndex, playerId) => {
+            const user = users.find(u => u.id === playerId);
+            let modalContent = `
+                <h3 class="cyber-header text-xl font-bold text-yellow-300 mb-4">${user.name}の役満を選択</h3>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    ${YAKUMAN_LIST.map(yakuman => `
+                        <button onclick="addYakumanToHanchan(${hanchanIndex}, '${playerId}', '${yakuman}')" class="cyber-btn p-3 text-sm">${yakuman}</button>
+                    `).join('')}
+                </div>
+                <div class="flex justify-end mt-6">
+                    <button onclick="openScoreInputModal(${hanchanIndex})" class="cyber-btn px-4 py-2">戻る</button>
+                </div>
+            `;
+            showModal(modalContent);
+        };
+
+        window.addYakumanToHanchan = (hanchanIndex, playerId, yakumanName) => {
+            const hanchan = hanchanScores[hanchanIndex];
+            if (!hanchan.yakumans) {
+                hanchan.yakumans = [];
+            }
+            hanchan.yakumans.push({ playerId, yakumanName });
+            showModalMessage(`${yakumanName}を記録しました！`);
+            renderScoreDisplay(); // Update main view to show yakuman tag
+            setTimeout(() => openScoreInputModal(hanchanIndex), 1500); // Re-open score modal
+        };
+
 
         window.setActiveInput = (inputId) => {
             document.querySelectorAll('.modal-score-input').forEach(el => el.classList.remove('border-yellow-400', 'ring-2', 'ring-yellow-400'));
@@ -1795,7 +1983,7 @@
                 }
             }
             
-            hanchanScores[index] = newScores;
+            hanchanScores[index].rawScores = newScores;
             renderScoreDisplay();
             closeModal();
         };
@@ -1808,10 +1996,11 @@
                 Number(document.getElementById('uma-3').value), Number(document.getElementById('uma-4').value)
             ];
             
-            const hanchanData = [];
+            const processedHanchans = [];
             
             for (let i = 0; i < hanchanScores.length; i++) {
-                const scores = hanchanScores[i];
+                const hanchan = hanchanScores[i];
+                const scores = hanchan.rawScores;
                 const isComplete = Object.values(scores).every(s => s !== null && s !== '');
                 
                 if (!isComplete) {
@@ -1823,17 +2012,17 @@
                 if (Math.round(total) !== basePoint * 4) {
                     return { error: `半荘 #${i + 1} の合計点が ${basePoint*4} になっていません。(現在: ${total})` };
                 }
-                hanchanData.push({ rawScores: scores });
+                processedHanchans.push(hanchan);
             }
 
-            if (hanchanData.length === 0 && onlyCompleted) {
+            if (processedHanchans.length === 0 && onlyCompleted) {
                 return { error: "ポイント計算できる完成した半荘がありません。" };
             }
 
             const totalPoints = {};
             selectedPlayers.forEach(p => totalPoints[p.id] = 0);
 
-            hanchanData.forEach(hanchan => {
+            processedHanchans.forEach(hanchan => {
                 const { points } = calculateHanchanRanksAndPoints(hanchan.rawScores);
                 hanchan.points = points;
                 Object.keys(points).forEach(playerId => {
@@ -1841,7 +2030,7 @@
                 });
             });
 
-            return { hanchanData, totalPoints, settings: { basePoint, returnPoint, uma } };
+            return { hanchanData: processedHanchans, totalPoints, settings: { basePoint, returnPoint, uma } };
         }
         
         window.savePartialData = () => {
@@ -1906,7 +2095,7 @@
                 .map(([id, points]) => ({ id, name: selectedPlayers.find(p=>p.id===id).name, points }))
                 .sort((a, b) => b.points - a.points);
             
-            let modalHtml = `<h3 class="luxury-header text-xl font-bold text-yellow-300 mb-4">現在のポイント状況</h3>
+            let modalHtml = `<h3 class="cyber-header text-xl font-bold text-yellow-300 mb-4">現在のポイント状況</h3>
                 <table class="min-w-full text-center">
                     <thead><tr class="border-b border-gray-700"><th class="py-2">順位</th><th class="py-2">雀士</th><th class="py-2">ポイント</th></tr></thead><tbody>`;
             
@@ -1918,7 +2107,7 @@
                 </tr>`;
             });
 
-            modalHtml += `</tbody></table><div class="flex justify-end mt-6"><button onclick="closeModal()" class="themed-btn px-4 py-2">閉じる</button></div>`;
+            modalHtml += `</tbody></table><div class="flex justify-end mt-6"><button onclick="closeModal()" class="cyber-btn px-4 py-2">閉じる</button></div>`;
             showModal(modalHtml);
         };
 
@@ -1935,20 +2124,33 @@
                 return;
             }
             
+            const dataToSave = {
+                gameDate: gameDate,
+                playerIds: selectedPlayers.map(p => p.id), 
+                playerNames: selectedPlayers.map(p => p.name),
+                settings: gameData.settings, 
+                scores: gameData.hanchanData, 
+                totalPoints: gameData.totalPoints
+            };
+
             try {
-                await addDoc(collection(db, `games`), {
-                    createdAt: new Date(), 
-                    gameDate: gameDate,
-                    playerIds: selectedPlayers.map(p => p.id), 
-                    playerNames: selectedPlayers.map(p => p.name),
-                    settings: gameData.settings, 
-                    scores: gameData.hanchanData, 
-                    totalPoints: gameData.totalPoints
-                });
-                showModalMessage("対局結果を保存しました！");
+                if (editingGameId) {
+                    // Update existing game
+                    const gameDocRef = doc(db, 'games', editingGameId);
+                    await updateDoc(gameDocRef, dataToSave);
+                    showModalMessage("対局結果を更新しました！");
+                } else {
+                    // Add new game
+                    dataToSave.createdAt = new Date();
+                    await addDoc(collection(db, `games`), dataToSave);
+                    showModalMessage("対局結果を保存しました！");
+                }
                 resetGame();
                 localStorage.removeItem('edogawa-m-league-partial');
-            } catch (error) { console.error("Error saving game: ", error); showModalMessage("データの保存に失敗しました。"); }
+            } catch (error) { 
+                console.error("Error saving game: ", error); 
+                showModalMessage("データの保存に失敗しました。"); 
+            }
         };
 
         function showModal(content) {
@@ -1956,7 +2158,7 @@
             document.getElementById('modal').classList.remove('hidden');
         }
         function showModalMessage(message) {
-            showModal(`<p class="text-lg text-center">${message}</p><div class="flex justify-end mt-6"><button onclick="closeModal()" class="themed-btn px-6 py-2">閉じる</button></div>`);
+            showModal(`<p class="text-lg text-center">${message}</p><div class="flex justify-end mt-6"><button onclick="closeModal()" class="cyber-btn px-6 py-2">閉じる</button></div>`);
         }
         function showLoadingModal(message) {
             showModal(`<div class="flex justify-center items-center flex-col gap-4"><p class="text-lg text-center">${message}</p><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400"></div></div>`);
@@ -2041,7 +2243,7 @@
             const rawScoresBody = createTableBody('rawScores');
 
             let detailsHtml = `
-                <h3 class="luxury-header text-xl font-bold text-yellow-300 mb-2">${date}</h3>
+                <h3 class="cyber-header text-xl font-bold text-yellow-300 mb-2">${date}</h3>
                 <div class="space-y-6">
                     <div>
                         <h4 class="font-bold mb-2">着順</h4>
@@ -2056,7 +2258,7 @@
                         <div class="overflow-x-auto"><table class="min-w-full text-sm"><thead><tr><th class="px-2 py-2 text-center">#</th>${playerHeaders}</tr></thead><tbody class="divide-y divide-gray-700">${rawScoresBody}</tbody></table></div>
                     </div>
                 </div>
-                <div class="flex justify-end mt-6"><button onclick="closeModal()" class="themed-btn px-4 py-2">閉じる</button></div>
+                <div class="flex justify-end mt-6"><button onclick="closeModal()" class="cyber-btn px-4 py-2">閉じる</button></div>
             `;
             showModal(detailsHtml);
         };
@@ -2064,9 +2266,10 @@
         function lockUnlockStep(stepNum, lock) {
             const stepDiv = document.getElementById(`step${stepNum}-player-selection`) || document.getElementById(`step${stepNum}-rule-settings`);
             if (!stepDiv) return;
-            const elements = stepDiv.querySelectorAll('input, button');
+            const elements = stepDiv.querySelectorAll('input, button, select');
             elements.forEach(el => {
-                if (!el.id.startsWith('to-step')) {
+                // Allow navigation buttons to be enabled/disabled separately
+                if (!el.id.includes('to-step') && !el.id.includes('back-to-step')) {
                     el.disabled = lock;
                 }
             });
@@ -2083,11 +2286,14 @@
             lockUnlockStep(2, true);
             const step3 = document.getElementById('step3-score-input');
             step3.classList.remove('hidden');
-            setupScoreDisplay();
+            if (hanchanScores.length === 0) {
+                setupScoreDisplay();
+            }
             step3.scrollIntoView({ behavior: 'smooth', block: 'center' });
         };
 
         window.backToStep1 = () => {
+            if (editingGameId) return; // Don't allow going back if editing
             document.getElementById('step2-rule-settings').classList.add('hidden');
             lockUnlockStep(1, false);
             document.getElementById('step1-player-selection').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -2095,6 +2301,7 @@
         };
 
         window.backToStep2 = () => {
+            if (editingGameId) return; // Don't allow going back if editing
             document.getElementById('step3-score-input').classList.add('hidden');
             lockUnlockStep(2, false);
             document.getElementById('step2-rule-settings').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -2147,8 +2354,84 @@
         const resetGame = () => {
             selectedPlayers = [];
             hanchanScores = [];
+            editingGameId = null;
             renderGameTab();
+            
+            const saveBtn = document.getElementById('save-game-btn');
+            if (saveBtn) {
+                saveBtn.innerHTML = `<i class="fas fa-save mr-2"></i>Pt変換して保存`;
+                saveBtn.classList.remove('cyber-btn-green');
+                saveBtn.classList.add('cyber-btn-yellow');
+            }
+            
             changeTab('game');
+        };
+
+        window.displayHeadToHeadStats = () => {
+            const p1Id = document.getElementById('h2h-player1')?.value;
+            const p2Id = document.getElementById('h2h-player2')?.value;
+            const resultsContainer = document.getElementById('h2h-results');
+
+            if (!p1Id || !p2Id) {
+                resultsContainer.innerHTML = `<p class="text-gray-500">比較したい雀士を2名選択してください。</p>`;
+                return;
+            }
+            if (p1Id === p2Id) {
+                resultsContainer.innerHTML = `<p class="text-yellow-400">同じ雀士は選択できません。</p>`;
+                return;
+            }
+
+            const p1 = users.find(u => u.id === p1Id);
+            const p2 = users.find(u => u.id === p2Id);
+
+            let p1Wins = 0;
+            let p2Wins = 0;
+            let draws = 0;
+            let totalHanchans = 0;
+
+            games.forEach(game => {
+                if (game.playerIds.includes(p1Id) && game.playerIds.includes(p2Id)) {
+                    game.scores.forEach(hanchan => {
+                        totalHanchans++;
+                        const p1Score = hanchan.rawScores[p1Id];
+                        const p2Score = hanchan.rawScores[p2Id];
+                        if (p1Score > p2Score) {
+                            p1Wins++;
+                        } else if (p2Score > p1Score) {
+                            p2Wins++;
+                        } else {
+                            draws++;
+                        }
+                    });
+                }
+            });
+
+            if (totalHanchans === 0) {
+                resultsContainer.innerHTML = `<p class="text-gray-500">この2人の直接対決の記録はありません。</p>`;
+                return;
+            }
+            
+            const p1WinRate = ((p1Wins / totalHanchans) * 100).toFixed(1);
+            const p2WinRate = ((p2Wins / totalHanchans) * 100).toFixed(1);
+
+            resultsContainer.innerHTML = `
+                <div class="text-2xl mb-4">総対戦半荘数: <span class="font-bold text-yellow-400">${totalHanchans}</span>回</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                    <div class="cyber-card p-4 text-center">
+                        ${getPlayerPhotoHtml(p1.id, 'w-20 h-20 mx-auto mb-2')}
+                        <h3 class="text-2xl font-bold text-blue-400">${p1.name}</h3>
+                        <p class="text-4xl font-bold text-green-400 my-2">${p1Wins}<span class="text-xl">勝</span></p>
+                        <p class="text-gray-400">勝率: ${p1WinRate}%</p>
+                    </div>
+                    <div class="cyber-card p-4 text-center">
+                        ${getPlayerPhotoHtml(p2.id, 'w-20 h-20 mx-auto mb-2')}
+                        <h3 class="text-2xl font-bold text-blue-400">${p2.name}</h3>
+                        <p class="text-4xl font-bold text-green-400 my-2">${p2Wins}<span class="text-xl">勝</span></p>
+                        <p class="text-gray-400">勝率: ${p2WinRate}%</p>
+                    </div>
+                </div>
+                ${draws > 0 ? `<p class="mt-4 text-gray-500">引き分け: ${draws}回</p>` : ''}
+            `;
         };
 
         initializeAppAndAuth();
