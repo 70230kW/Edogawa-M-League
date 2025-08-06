@@ -247,6 +247,7 @@ function initializeAppAndAuth() {
     renderHistoryTab();
 }
 
+
 /**
  * Performance Refactor: Master update function.
  */
@@ -256,6 +257,7 @@ function updateAllCalculationsAndViews() {
     updateLeaderboard();
     updateTrophyPage();
     updateHistoryTabFilters();
+    updateDetailedHistoryFilters(); // この行を追加
     updateHistoryList();
     renderDetailedHistoryTables();
     renderUserManagementList();
@@ -773,6 +775,48 @@ function updateHistoryTabFilters() {
     if (Array.from(playerSelect.options).some(opt => opt.value === currentPlayer)) {
         playerSelect.value = currentPlayer;
     }
+}
+
+// 詳細履歴タブのフィルタ選択肢を更新する関数
+function updateDetailedHistoryFilters() {
+    const prefixes = ['raw', 'pt'];
+    prefixes.forEach(prefix => {
+        const yearSelect = document.getElementById(`history-${prefix}-year-filter`);
+        const monthSelect = document.getElementById(`history-${prefix}-month-filter`);
+        const playerSelect = document.getElementById(`history-${prefix}-player-filter`);
+
+        if (!yearSelect || !monthSelect || !playerSelect) return;
+
+        // 現在の選択値を保持
+        const currentYear = yearSelect.value;
+        const currentMonth = monthSelect.value;
+        const currentPlayer = playerSelect.value;
+
+        // 年フィルタの選択肢を生成
+        const yearOptions = getGameYears().map(year => `<option value="${year}">${year}年</option>`).join('');
+        yearSelect.innerHTML = `<option value="all">すべて</option>${yearOptions}`;
+        
+        // 月フィルタの選択肢を生成 (初回のみ)
+        if (monthSelect.options.length <= 1) { // "すべて" オプションのみの場合
+            const monthOptions = Array.from({length: 12}, (_, i) => i + 1).map(m => `<option value="${m}">${m}月</option>`).join('');
+            monthSelect.innerHTML = `<option value="all">すべて</option>${monthOptions}`;
+        }
+
+        // 雀士フィルタの選択肢を生成
+        const playerOptions = users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+        playerSelect.innerHTML = `<option value="all">すべて</option>${playerOptions}`;
+
+        // 保持していた値を再設定
+        if (Array.from(yearSelect.options).some(opt => opt.value === currentYear)) {
+            yearSelect.value = currentYear;
+        }
+        if (Array.from(monthSelect.options).some(opt => opt.value === currentMonth)) {
+            monthSelect.value = currentMonth;
+        }
+        if (Array.from(playerSelect.options).some(opt => opt.value === currentPlayer)) {
+            playerSelect.value = currentPlayer;
+        }
+    });
 }
 
 window.updateHistoryList = () => {
