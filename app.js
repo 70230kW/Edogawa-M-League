@@ -780,6 +780,10 @@ function updateHistoryTabFilters() {
 // 詳細履歴タブのフィルタ選択肢を更新する関数
 function updateDetailedHistoryFilters() {
     const prefixes = ['raw', 'pt'];
+    const today = new Date();
+    const currentYearStr = today.getFullYear().toString();
+    const currentMonthStr = (today.getMonth() + 1).toString();
+
     prefixes.forEach(prefix => {
         const yearSelect = document.getElementById(`history-${prefix}-year-filter`);
         const monthSelect = document.getElementById(`history-${prefix}-month-filter`);
@@ -787,34 +791,48 @@ function updateDetailedHistoryFilters() {
 
         if (!yearSelect || !monthSelect || !playerSelect) return;
 
-        // 現在の選択値を保持
-        const currentYear = yearSelect.value;
-        const currentMonth = monthSelect.value;
-        const currentPlayer = playerSelect.value;
+        // フィルタを再生成する前に、現在の選択値を取得
+        const previouslySelectedYear = yearSelect.value;
+        const previouslySelectedMonth = monthSelect.value;
+        const previouslySelectedPlayer = playerSelect.value;
 
-        // 年フィルタの選択肢を生成
+        // フィルタの選択肢を生成
         const yearOptions = getGameYears().map(year => `<option value="${year}">${year}年</option>`).join('');
         yearSelect.innerHTML = `<option value="all">すべて</option>${yearOptions}`;
-        
-        // 月フィルタの選択肢を生成 (初回のみ)
-        if (monthSelect.options.length <= 1) { // "すべて" オプションのみの場合
+
+        // 月フィルタは初回のみ生成
+        if (monthSelect.options.length <= 1) {
             const monthOptions = Array.from({length: 12}, (_, i) => i + 1).map(m => `<option value="${m}">${m}月</option>`).join('');
             monthSelect.innerHTML = `<option value="all">すべて</option>${monthOptions}`;
         }
-
-        // 雀士フィルタの選択肢を生成
+        
         const playerOptions = users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
         playerSelect.innerHTML = `<option value="all">すべて</option>${playerOptions}`;
 
-        // 保持していた値を再設定
-        if (Array.from(yearSelect.options).some(opt => opt.value === currentYear)) {
-            yearSelect.value = currentYear;
+        // --- 初期値の設定 ---
+        // 年フィルタ：ユーザーがまだ何も選択していなければ、当年を初期値にする
+        if (previouslySelectedYear === 'all' || !previouslySelectedYear) {
+            if (Array.from(yearSelect.options).some(opt => opt.value === currentYearStr)) {
+                yearSelect.value = currentYearStr;
+            } else {
+                yearSelect.value = 'all'; // 該当年がなければ「すべて」にする
+            }
+        } else {
+            yearSelect.value = previouslySelectedYear; // ユーザーの選択を維持
         }
-        if (Array.from(monthSelect.options).some(opt => opt.value === currentMonth)) {
-            monthSelect.value = currentMonth;
+
+        // 月フィルタ：ユーザーがまだ何も選択していなければ、当月を初期値にする
+        if (previouslySelectedMonth === 'all' || !previouslySelectedMonth) {
+            monthSelect.value = currentMonthStr;
+        } else {
+            monthSelect.value = previouslySelectedMonth; // ユーザーの選択を維持
         }
-        if (Array.from(playerSelect.options).some(opt => opt.value === currentPlayer)) {
-            playerSelect.value = currentPlayer;
+
+        // 雀士フィルタ：常に「すべて」を初期値とするか、ユーザーの選択を維持
+        if (previouslySelectedPlayer) {
+            playerSelect.value = previouslySelectedPlayer;
+        } else {
+             playerSelect.value = 'all';
         }
     });
 }
