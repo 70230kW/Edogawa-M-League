@@ -23,6 +23,12 @@
             --accent-red: #f5655f;   /* Softer Red */
             --accent-yellow: #E2FF08;
             --accent-glow: rgba(88, 166, 255, 0.5);
+            --rank-bronze: #CD7F32;
+            --rank-silver: #C0C0C0;
+            --rank-gold: #FFD700;
+            --rank-platinum: #E5E4E2;
+            --rank-crystal: #A7D8DE;
+            --rank-chaos: #9932CC;
         }
         html { scroll-behavior: smooth; }
         body {
@@ -127,6 +133,65 @@
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Trophy Styles */
+        .trophy-card {
+            background: linear-gradient(145deg, #1a202c, #13171f);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+            opacity: 0.4;
+        }
+        .trophy-card.achieved {
+            opacity: 1;
+        }
+        .trophy-icon {
+            text-shadow: 0 0 10px;
+        }
+        .rank-bronze .trophy-icon { color: var(--rank-bronze); }
+        .rank-silver .trophy-icon { color: var(--rank-silver); }
+        .rank-gold .trophy-icon { color: var(--rank-gold); }
+        .rank-platinum .trophy-icon { color: var(--rank-platinum); }
+        .rank-crystal .trophy-icon { color: var(--rank-crystal); }
+        .rank-chaos .trophy-icon { color: var(--rank-chaos); }
+
+        .rank-bronze.achieved {
+            border-left: 5px solid var(--rank-bronze);
+            box-shadow: 0 0 15px var(--rank-bronze);
+        }
+        .rank-silver.achieved {
+            border-left: 5px solid var(--rank-silver);
+            box-shadow: 0 0 15px var(--rank-silver);
+        }
+        .rank-gold.achieved {
+            border-left: 5px solid var(--rank-gold);
+            box-shadow: 0 0 15px var(--rank-gold);
+        }
+        .rank-platinum.achieved {
+            border-left: 5px solid var(--rank-platinum);
+            box-shadow: 0 0 15px var(--rank-platinum);
+        }
+        .rank-crystal.achieved {
+            border-left: 5px solid var(--rank-crystal);
+            box-shadow: 0 0 15px var(--rank-crystal);
+        }
+        .rank-chaos.achieved {
+            border-left: 5px solid var(--rank-chaos);
+            box-shadow: 0 0 15px var(--rank-chaos);
+        }
+        .trophy-card.secret:not(.achieved) .trophy-icon {
+            color: var(--text-secondary);
+        }
+        .trophy-card.secret:not(.achieved) h4 {
+            color: var(--text-secondary);
+        }
+        .trophy-card.secret:not(.achieved) p {
+            color: var(--text-secondary);
+        }
+        .yakuman-label-disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
     </style>
 </head>
 <body class="text-gray-200">
@@ -145,10 +210,10 @@
                 <nav class="-mb-px flex space-x-4 sm:space-x-6 overflow-x-auto no-scrollbar" aria-label="Tabs">
                     <button onclick="changeTab('game')" class="tab-btn active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">対局</button>
                     <button onclick="changeTab('leaderboard')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">順位表</button>
+                    <button onclick="changeTab('trophy')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">トロフィー</button>
                     <button onclick="changeTab('data-analysis')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">データ分析</button>
                     <button onclick="changeTab('personal-stats')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">個人成績</button>
                     <button onclick="changeTab('history')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">対局履歴</button>
-                    <button onclick="changeTab('yakuman')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">役満記録</button>
                     <button onclick="changeTab('head-to-head')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">直接対決</button>
                     <button onclick="changeTab('history-raw')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">詳細履歴(素点)</button>
                     <button onclick="changeTab('history-pt')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">詳細履歴(PT)</button>
@@ -161,10 +226,10 @@
         <main id="main-content">
             <div id="game-tab" class="space-y-6"></div>
             <div id="leaderboard-tab" class="hidden cyber-card p-2 sm:p-6"></div>
+            <div id="trophy-tab" class="hidden cyber-card p-2 sm:p-6"></div>
             <div id="data-analysis-tab" class="hidden"></div>
             <div id="personal-stats-tab" class="hidden cyber-card p-2 sm:p-6"></div>
             <div id="history-tab" class="hidden cyber-card p-2 sm:p-6"></div>
-            <div id="yakuman-tab" class="hidden cyber-card p-2 sm:p-6"></div>
             <div id="head-to-head-tab" class="hidden cyber-card p-2 sm:p-6"></div>
             <div id="history-raw-tab" class="hidden cyber-card p-2 sm:p-6"></div>
             <div id="history-pt-tab" class="hidden cyber-card p-2 sm:p-6"></div>
@@ -196,6 +261,7 @@
 
         // --- Performance Refactor: Cached Stats ---
         let cachedStats = {};
+        let playerTrophies = {}; // { playerId: { trophyId: true, ... } }
 
         // Chart instances
         let playerRadarChart = null;
@@ -209,6 +275,27 @@
             '国士無双', '四暗刻', '大三元', '緑一色', '字一色', '清老頭', '九蓮宝燈', '四槓子', '天和', '地和',
             '国士無双十三面待ち', '四暗刻単騎', '純正九蓮宝燈', '大四喜', '小四喜'
         ];
+        const PENALTY_REASONS = {
+            chombo: ['誤ロン・誤ツモ', 'ノーテンリーチ', 'その他'],
+            agariHouki: ['多牌・少牌', '喰い替え', 'その他']
+        };
+        const YAKUMAN_INCOMPATIBILITY = {
+            '天和': YAKUMAN_LIST.filter(y => y !== '天和'),
+            '地和': YAKUMAN_LIST.filter(y => y !== '地和'),
+            '国士無双': YAKUMAN_LIST.filter(y => !['国士無双', '国士無双十三面待ち'].includes(y)),
+            '国士無双十三面待ち': YAKUMAN_LIST.filter(y => !['国士無双', '国士無双十三面待ち'].includes(y)),
+            '九蓮宝燈': YAKUMAN_LIST.filter(y => !['九蓮宝燈', '純正九蓮宝燈'].includes(y)),
+            '純正九蓮宝燈': YAKUMAN_LIST.filter(y => !['九蓮宝燈', '純正九蓮宝燈'].includes(y)),
+            '四槓子': YAKUMAN_LIST.filter(y => y !== '四槓子'),
+            '四暗刻': ['国士無双', '九蓮宝燈', '四槓子', '国士無双十三面待ち', '純正九蓮宝燈'],
+            '四暗刻単騎': ['国士無双', '九蓮宝燈', '四槓子', '国士無双十三面待ち', '純正九蓮宝燈'],
+            '大三元': ['国士無双', '九蓮宝燈', '四槓子', '緑一色', '清老頭', '国士無双十三面待ち', '純正九蓮宝燈'],
+            '字一色': ['国士無双', '九蓮宝燈', '緑一色', '清老頭', '国士無双十三面待ち', '純正九蓮宝燈'],
+            '緑一色': ['国士無双', '九蓮宝燈', '大三元', '字一色', '清老頭', '国士無双十三面待ち', '純正九蓮宝燈', '大四喜', '小四喜'],
+            '清老頭': ['国士無双', '九蓮宝燈', '大三元', '字一色', '緑一色', '国士無双十三面待ち', '純正九蓮宝燈', '大四喜', '小四喜'],
+            '大四喜': ['国士無双', '九蓮宝燈', '小四喜', '国士無双十三面待ち', '純正九蓮宝燈'],
+            '小四喜': ['国士無双', '九蓮宝燈', '大四喜', '国士無双十三面待ち', '純正九蓮宝燈'],
+        };
 
         // --- Firebase Config ---
         const firebaseConfig = {
@@ -248,7 +335,7 @@
         function calculateAllPlayerStats(gamesToCalculate) {
             const stats = {};
             users.forEach(u => {
-                stats[u.id] = { id: u.id, name: u.name, photoURL: u.photoURL, totalPoints: 0, gameCount: 0, ranks: [0, 0, 0, 0], bustedCount: 0, totalRawScore: 0, totalHanchans: 0, yakumanCount: 0 };
+                stats[u.id] = { id: u.id, name: u.name, photoURL: u.photoURL, totalPoints: 0, gameCount: 0, ranks: [0, 0, 0, 0], bustedCount: 0, totalRawScore: 0, totalHanchans: 0, yakumanCount: 0, maxStreak: { rentai: 0, noTobi: 0, noLast: 0, top: 0, sameRank: 0 }, currentStreak: { rentai: 0, noTobi: 0, noLast: 0, top: 0, sameRank: 0 }, lastRank: null };
             });
 
             const sortedGames = [...gamesToCalculate].sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
@@ -261,7 +348,13 @@
                     Object.entries(hanchan.rawScores).forEach(([playerId, rawScore]) => {
                         if (stats[playerId]) {
                             stats[playerId].totalRawScore += rawScore;
-                            if (rawScore < 0) stats[playerId].bustedCount++;
+                            if (rawScore < 0) {
+                                stats[playerId].bustedCount++;
+                                stats[playerId].currentStreak.noTobi = 0;
+                            } else {
+                                stats[playerId].currentStreak.noTobi++;
+                            }
+                            stats[playerId].maxStreak.noTobi = Math.max(stats[playerId].maxStreak.noTobi, stats[playerId].currentStreak.noTobi);
                         }
                     });
                     
@@ -277,7 +370,36 @@
                         const playersInGroup = scoreGroups[score];
                         playersInGroup.forEach(pId => {
                             if (stats[pId]) {
-                                stats[pId].ranks[rankCursor]++;
+                                const currentRank = rankCursor;
+                                stats[pId].ranks[currentRank]++;
+
+                                // Streak logic
+                                if (currentRank <= 1) { // 1st or 2nd
+                                    stats[pId].currentStreak.rentai++;
+                                } else {
+                                    stats[pId].currentStreak.rentai = 0;
+                                }
+                                if (currentRank === 0) { // 1st
+                                    stats[pId].currentStreak.top++;
+                                } else {
+                                    stats[pId].currentStreak.top = 0;
+                                }
+                                if (currentRank === 3) { // 4th
+                                    stats[pId].currentStreak.noLast = 0;
+                                } else {
+                                    stats[pId].currentStreak.noLast++;
+                                }
+                                if(stats[pId].lastRank === currentRank) {
+                                    stats[pId].currentStreak.sameRank++;
+                                } else {
+                                    stats[pId].currentStreak.sameRank = 1;
+                                }
+
+                                stats[pId].maxStreak.rentai = Math.max(stats[pId].maxStreak.rentai, stats[pId].currentStreak.rentai);
+                                stats[pId].maxStreak.top = Math.max(stats[pId].maxStreak.top, stats[pId].currentStreak.top);
+                                stats[pId].maxStreak.noLast = Math.max(stats[pId].maxStreak.noLast, stats[pId].currentStreak.noLast);
+                                stats[pId].maxStreak.sameRank = Math.max(stats[pId].maxStreak.sameRank, stats[pId].currentStreak.sameRank);
+                                stats[pId].lastRank = currentRank;
                             }
                         });
                         rankCursor += playersInGroup.length;
@@ -287,10 +409,10 @@
                         if(stats[pId]) stats[pId].totalHanchans++;
                     });
 
-                    if (hanchan.yakumans) {
-                        hanchan.yakumans.forEach(y => {
-                            if (stats[y.playerId]) {
-                                stats[y.playerId].yakumanCount++;
+                    if (hanchan.yakumanEvents) {
+                        hanchan.yakumanEvents.forEach(event => {
+                            if (stats[event.playerId]) {
+                                stats[event.playerId].yakumanCount += event.yakumans.length;
                             }
                         });
                     }
@@ -362,12 +484,13 @@
             // Initial render of all tab containers
             renderGameTab();
             renderLeaderboardTab();
+            renderTrophyTab();
             renderDataAnalysisTab();
             renderPersonalStatsTab();
             renderUserManagementTab();
             renderDetailedHistoryTabContainers();
-            renderYakumanTab();
             renderHeadToHeadTab();
+            renderHistoryTab();
         }
 
         /**
@@ -375,13 +498,15 @@
          */
         function updateAllCalculationsAndViews() {
             cachedStats = calculateAllPlayerStats(games);
-
+            
             updateLeaderboard();
-            renderHistoryList();
+            updateTrophyPage();
+            updateHistoryTabFilters();
+            updateHistoryList();
             renderDetailedHistoryTables();
             renderUserManagementList();
             renderPersonalStatsTab();
-            renderYakumanList();
+            updateHeadToHeadDropdowns();
             
             const activeTab = document.querySelector('.tab-btn.active').getAttribute('onclick').match(/'([^']+)'/)[1];
             
@@ -400,7 +525,7 @@
                     renderScoreDisplay();
                 }
             } else if (activeTab === 'head-to-head') {
-                renderHeadToHeadTab(); // Re-render to update dropdowns
+                 displayHeadToHeadStats();
             }
         }
 
@@ -443,12 +568,16 @@
         }
         
         window.changeTab = (tabName) => {
-            ['game', 'leaderboard', 'data-analysis', 'personal-stats', 'history', 'yakuman', 'head-to-head', 'history-raw', 'history-pt', 'users'].forEach(tab => {
-                document.getElementById(`${tab}-tab`).classList.add('hidden');
+            ['game', 'leaderboard', 'trophy', 'data-analysis', 'personal-stats', 'history', 'head-to-head', 'history-raw', 'history-pt', 'users'].forEach(tab => {
+                const tabEl = document.getElementById(`${tab}-tab`);
+                if(tabEl) tabEl.classList.add('hidden');
+                
                 const btn = document.querySelector(`.tab-btn[onclick="changeTab('${tab}')"]`);
                 if(btn) btn.classList.remove('active');
             });
-            document.getElementById(`${tabName}-tab`).classList.remove('hidden');
+            const tabEl = document.getElementById(`${tabName}-tab`);
+            if(tabEl) tabEl.classList.remove('hidden');
+
             const btn = document.querySelector(`.tab-btn[onclick="changeTab('${tabName}')"]`);
             if(btn) btn.classList.add('active');
 
@@ -458,6 +587,8 @@
                 loadSavedGameData();
             } else if (tabName === 'head-to-head') {
                 displayHeadToHeadStats();
+            } else if (tabName === 'trophy') {
+                updateTrophyPage();
             }
         };
 
@@ -536,7 +667,7 @@
                     <h2 class="cyber-header text-2xl font-bold text-blue-400">順位表</h2>
                     <div class="flex items-center gap-2">
                         <label for="leaderboard-period-select" class="text-sm whitespace-nowrap">期間:</label>
-                        <select id="leaderboard-period-select" onchange="updateLeaderboard()" class="rounded-md p-1">
+                        <select id="leaderboard-period-select" onchange="updateAllCalculationsAndViews()" class="rounded-md p-1">
                             <option value="all">全期間</option>
                             ${yearOptions}
                         </select>
@@ -606,8 +737,24 @@
         function renderDetailedHistoryTabContainers() {
             const rawContainer = document.getElementById('history-raw-tab');
             const ptContainer = document.getElementById('history-pt-tab');
-            rawContainer.innerHTML = `<h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">詳細履歴 (素点)</h2><div id="history-raw-list" class="overflow-x-auto"></div>`;
-            ptContainer.innerHTML = `<h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">詳細履歴 (PT)</h2><div id="history-pt-list" class="overflow-x-auto"></div>`;
+            const filterHtml = (prefix) => `
+                <div class="flex flex-col sm:flex-row gap-4 mb-4 p-4 bg-gray-900 rounded-lg">
+                    <div class="flex-1">
+                        <label for="history-${prefix}-year-filter" class="block text-sm font-medium text-gray-400">年</label>
+                        <select id="history-${prefix}-year-filter" onchange="renderDetailedHistoryTables()" class="mt-1 block w-full rounded-md"></select>
+                    </div>
+                    <div class="flex-1">
+                        <label for="history-${prefix}-month-filter" class="block text-sm font-medium text-gray-400">月</label>
+                        <select id="history-${prefix}-month-filter" onchange="renderDetailedHistoryTables()" class="mt-1 block w-full rounded-md"></select>
+                    </div>
+                    <div class="flex-1">
+                        <label for="history-${prefix}-player-filter" class="block text-sm font-medium text-gray-400">雀士</label>
+                        <select id="history-${prefix}-player-filter" onchange="renderDetailedHistoryTables()" class="mt-1 block w-full rounded-md"></select>
+                    </div>
+                </div>
+            `;
+            rawContainer.innerHTML = `<h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">詳細履歴 (素点)</h2>${filterHtml('raw')}<div id="history-raw-list" class="overflow-x-auto"></div>`;
+            ptContainer.innerHTML = `<h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">詳細履歴 (PT)</h2>${filterHtml('pt')}<div id="history-pt-list" class="overflow-x-auto"></div>`;
         }
         
         function renderDataAnalysisTab() {
@@ -620,6 +767,9 @@
                     <div id="stat-cards-container" class="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
                         <!-- Populated by JS -->
                     </div>
+                    
+                    <!-- Top 3 Players -->
+                    <div id="top-3-container" class="cyber-card p-4 sm:p-6"></div>
 
                     <!-- Charts Grid -->
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -644,31 +794,14 @@
             `;
         }
 
-        function renderYakumanTab() {
-            const container = document.getElementById('yakuman-tab');
-            container.innerHTML = `
-                <h2 class="cyber-header text-2xl font-bold text-blue-400 border-b border-gray-700 pb-2 mb-4">役満記録</h2>
-                <div id="yakuman-list" class="space-y-3">
-                    <p class="text-gray-500">まだ役満は記録されていません。</p>
-                </div>
-            `;
-        }
-
         function renderHeadToHeadTab() {
             const container = document.getElementById('head-to-head-tab');
-            const playerOptions = users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
             container.innerHTML = `
                 <h2 class="cyber-header text-2xl font-bold text-blue-400 border-b border-gray-700 pb-2 mb-4">直接対決</h2>
                 <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
-                    <select id="h2h-player1" class="p-2 rounded-md" onchange="displayHeadToHeadStats()">
-                        <option value="">雀士1を選択</option>
-                        ${playerOptions}
-                    </select>
+                    <select id="h2h-player1" class="p-2 rounded-md" onchange="displayHeadToHeadStats()"></select>
                     <span class="font-bold text-xl">VS</span>
-                    <select id="h2h-player2" class="p-2 rounded-md" onchange="displayHeadToHeadStats()">
-                        <option value="">雀士2を選択</option>
-                        ${playerOptions}
-                    </select>
+                    <select id="h2h-player2" class="p-2 rounded-md" onchange="displayHeadToHeadStats()"></select>
                 </div>
                 <div id="h2h-results" class="text-center">
                     <p class="text-gray-500">比較したい雀士を2名選択してください。</p>
@@ -839,46 +972,139 @@
             }
         }
 
-        function renderHistoryList() {
+        function renderHistoryTab() {
             const container = document.getElementById('history-tab');
-            container.innerHTML = `<h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">対局履歴</h2>`;
-            if (games.length === 0) {
-                container.innerHTML += `<p class="text-gray-500">対局履歴がありません。</p>`;
+            if (!container) return;
+            container.innerHTML = `
+                <h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">対局履歴</h2>
+                <div class="flex flex-col sm:flex-row gap-4 mb-4 p-4 bg-gray-900 rounded-lg">
+                    <div class="flex-1">
+                        <label for="history-year-filter" class="block text-sm font-medium text-gray-400">年</label>
+                        <select id="history-year-filter" onchange="updateHistoryList()" class="mt-1 block w-full rounded-md"></select>
+                    </div>
+                    <div class="flex-1">
+                        <label for="history-month-filter" class="block text-sm font-medium text-gray-400">月</label>
+                        <select id="history-month-filter" onchange="updateHistoryList()" class="mt-1 block w-full rounded-md"></select>
+                    </div>
+                    <div class="flex-1">
+                        <label for="history-player-filter" class="block text-sm font-medium text-gray-400">雀士</label>
+                        <select id="history-player-filter" onchange="updateHistoryList()" class="mt-1 block w-full rounded-md"></select>
+                    </div>
+                </div>
+                <div id="history-list-container" class="space-y-4"></div>
+            `;
+        }
+
+        function updateHistoryTabFilters() {
+            const yearSelect = document.getElementById('history-year-filter');
+            const monthSelect = document.getElementById('history-month-filter');
+            const playerSelect = document.getElementById('history-player-filter');
+
+            if (!yearSelect || !monthSelect || !playerSelect) return;
+
+            // Preserve selections
+            const currentYear = yearSelect.value;
+            const currentMonth = monthSelect.value;
+            const currentPlayer = playerSelect.value;
+
+            // Year filter
+            const yearOptions = getGameYears().map(year => `<option value="${year}">${year}年</option>`).join('');
+            yearSelect.innerHTML = `<option value="all">すべて</option>${yearOptions}`;
+            if (Array.from(yearSelect.options).some(opt => opt.value === currentYear)) {
+                yearSelect.value = currentYear;
+            }
+
+            // Month filter (static, but let's populate it here for consistency)
+            if (monthSelect.options.length === 0) {
+                const monthOptions = Array.from({length: 12}, (_, i) => i + 1).map(m => `<option value="${m}">${m}月</option>`).join('');
+                monthSelect.innerHTML = `<option value="all">すべて</option>${monthOptions}`;
+            }
+            if (Array.from(monthSelect.options).some(opt => opt.value === currentMonth)) {
+                monthSelect.value = currentMonth;
+            }
+
+
+            // Player filter
+            const playerOptions = users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+            playerSelect.innerHTML = `<option value="all">すべて</option>${playerOptions}`;
+            if (Array.from(playerSelect.options).some(opt => opt.value === currentPlayer)) {
+                playerSelect.value = currentPlayer;
+            }
+        }
+
+        window.updateHistoryList = () => {
+            const container = document.getElementById('history-list-container');
+            if (!container) return;
+
+            const yearFilter = document.getElementById('history-year-filter').value;
+            const monthFilter = document.getElementById('history-month-filter').value;
+            const playerFilter = document.getElementById('history-player-filter').value;
+
+            let filteredGames = [...games];
+
+            // Filter by year
+            if (yearFilter !== 'all') {
+                filteredGames = filteredGames.filter(game => {
+                    const gameYear = (game.gameDate || '').substring(0, 4);
+                    return gameYear === yearFilter;
+                });
+            }
+
+            // Filter by month
+            if (monthFilter !== 'all') {
+                filteredGames = filteredGames.filter(game => {
+                    if (!game.gameDate) return false;
+                    // Expected format: "YYYY/M/D..."
+                    const parts = game.gameDate.split('/');
+                    if (parts.length > 1) {
+                        const gameMonth = parts[1];
+                        return gameMonth === monthFilter;
+                    }
+                    return false;
+                });
+            }
+
+            // Filter by player
+            if (playerFilter !== 'all') {
+                filteredGames = filteredGames.filter(game => game.playerIds.includes(playerFilter));
+            }
+            
+            if (filteredGames.length === 0) {
+                container.innerHTML = `<p class="text-gray-500 text-center py-8">該当する対局履歴がありません。</p>`;
                 return;
             }
-            const listContainer = document.createElement('div');
-            listContainer.className = 'space-y-4';
-            listContainer.innerHTML = games.map(game => {
-                    const date = game.gameDate || new Date(game.createdAt.seconds * 1000).toLocaleString('ja-JP');
-                    const winnerEntry = Object.entries(game.totalPoints).sort((a, b) => b[1] - a[1])[0];
-                    const winnerId = winnerEntry[0];
-                    const winnerUser = users.find(u => u.id === winnerId);
-                    const photoHtml = getPlayerPhotoHtml(winnerId, 'w-8 h-8');
 
-                    return `
-                        <div class="bg-gray-900 p-4 rounded-lg border border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                            <div class="cursor-pointer flex-grow" onclick="showGameDetails('${game.id}')">
-                                <p class="font-bold text-lg">${date}</p>
-                                <p class="text-sm text-gray-400">${game.playerNames.join(', ')}</p>
+            container.innerHTML = filteredGames.map(game => {
+                const date = game.gameDate || new Date(game.createdAt.seconds * 1000).toLocaleString('ja-JP');
+                const winnerEntry = Object.entries(game.totalPoints).sort((a, b) => b[1] - a[1])[0];
+                const winnerId = winnerEntry[0];
+                const winnerUser = users.find(u => u.id === winnerId);
+                const photoHtml = getPlayerPhotoHtml(winnerId, 'w-8 h-8');
+
+                return `
+                    <div class="bg-gray-900 p-4 rounded-lg border border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div class="cursor-pointer flex-grow" onclick="showGameDetails('${game.id}')">
+                            <p class="font-bold text-lg">${date}</p>
+                            <p class="text-sm text-gray-400">${game.playerNames.join(', ')}</p>
+                        </div>
+                        <div class="flex justify-between w-full sm:w-auto items-center">
+                            <div class="text-left sm:text-right mr-4 cursor-pointer flex items-center gap-2" onclick="showGameDetails('${game.id}')">
+                                ${photoHtml}
+                                <div>
+                                    <p class="text-xs">WINNER</p>
+                                    <p class="font-bold text-green-400">${winnerUser ? winnerUser.name : 'N/A'} (+${winnerEntry[1].toFixed(1)})</p>
+                                </div>
                             </div>
-                            <div class="flex justify-between w-full sm:w-auto items-center">
-                                <div class="text-left sm:text-right mr-4 cursor-pointer flex items-center gap-2" onclick="showGameDetails('${game.id}')">
-                                    ${photoHtml}
-                                    <div>
-                                        <p class="text-xs">WINNER</p>
-                                        <p class="font-bold text-green-400">${winnerUser ? winnerUser.name : 'N/A'} (+${winnerEntry[1].toFixed(1)})</p>
-                                    </div>
-                                </div>
-                                <div class="flex gap-2">
-                                    <button onclick="editGame('${game.id}')" class="text-blue-400 hover:text-blue-300 text-lg p-2 self-center"><i class="fas fa-edit"></i></button>
-                                    <button onclick="confirmDeleteGame('${game.id}', '${date}')" class="text-red-500 hover:text-red-400 text-lg p-2 self-center"><i class="fas fa-trash-alt"></i></button>
-                                </div>
+                            <div class="flex gap-2">
+                                <button onclick="editGame('${game.id}')" class="text-blue-400 hover:text-blue-300 text-lg p-2 self-center"><i class="fas fa-edit"></i></button>
+                                <button onclick="confirmDeleteGame('${game.id}', '${date}')" class="text-red-500 hover:text-red-400 text-lg p-2 self-center"><i class="fas fa-trash-alt"></i></button>
                             </div>
                         </div>
-                    `;
-                }).join('');
-            container.appendChild(listContainer);
-        }
+                    </div>
+                `;
+            }).join('');
+        };
+
 
         function renderDetailedHistoryTables() {
             const rawListContainer = document.getElementById('history-raw-list');
@@ -892,14 +1118,31 @@
                         date: game.gameDate || new Date(game.createdAt.seconds * 1000).toLocaleString('ja-JP'),
                         gameId: game.id,
                         hanchanNum: index + 1,
-                        players: game.playerNames,
+                        playerIds: game.playerIds,
                         rawScores: hanchan.rawScores,
                         points: hanchan.points
                     });
                 });
             });
 
-            const createTable = (dataType) => {
+            const createTable = (dataType, container, yearFilter, monthFilter, playerFilter) => {
+                 let filteredHanchans = [...allHanchans];
+
+                if (yearFilter !== 'all') {
+                    filteredHanchans = filteredHanchans.filter(h => (h.date || '').substring(0, 4) === yearFilter);
+                }
+                if (monthFilter !== 'all') {
+                    filteredHanchans = filteredHanchans.filter(h => {
+                        if (!h.date) return false;
+                        const parts = h.date.split('/');
+                        return parts.length > 1 && parts[1] === monthFilter;
+                    });
+                }
+                if (playerFilter !== 'all') {
+                    filteredHanchans = filteredHanchans.filter(h => h.playerIds.includes(playerFilter));
+                }
+
+
                 let tableHtml = `<table class="min-w-full divide-y divide-gray-700 font-m-gothic text-xs md:text-sm">
                     <thead class="bg-gray-900 text-xs md:text-sm font-medium text-gray-400 uppercase tracking-wider">
                         <tr>
@@ -909,99 +1152,63 @@
                     </thead>
                     <tbody class="divide-y divide-gray-700">`;
                 
-                let lastDate = null;
-                allHanchans.forEach(hanchan => {
-                    const currentDate = hanchan.date.split('(')[0];
-                    let borderClass = '';
-                    if (lastDate && currentDate !== lastDate) {
-                        borderClass = 'border-t-2 border-gray-500';
-                    }
-                    lastDate = currentDate;
-
-                    const scores = hanchan[dataType];
-                    const scoreGroups = {};
-                    Object.entries(hanchan.rawScores).forEach(([pId, score]) => {
-                        if (!scoreGroups[score]) scoreGroups[score] = [];
-                        scoreGroups[score].push(pId);
-                    });
-                    const sortedScores = Object.keys(scoreGroups).map(Number).sort((a, b) => b - a);
-                    
-                    const ranks = {};
-                    let rankCursor = 1;
-                    sortedScores.forEach(score => {
-                        const playersInGroup = scoreGroups[score];
-                        playersInGroup.forEach(pId => { ranks[pId] = rankCursor; });
-                        rankCursor += playersInGroup.length;
-                    });
-                    
-                    tableHtml += `<tr class="${borderClass}"><td class="px-2 py-2 whitespace-nowrap">${hanchan.date} (#${hanchan.hanchanNum})</td>`;
-                    users.forEach(user => {
-                        if (scores[user.id] !== undefined) {
-                            const rank = ranks[user.id];
-                            let rankClass = '';
-                            if (rank === 1) rankClass = 'text-rank-1';
-                            if (rank === 4) rankClass = 'text-rank-4';
-                            tableHtml += `<td class="px-2 py-2 text-right ${rankClass}">${dataType === 'points' ? scores[user.id].toFixed(1) : scores[user.id].toLocaleString()}</td>`;
-                        } else {
-                            tableHtml += `<td class="px-2 py-2 text-right text-gray-600">-</td>`;
+                if (filteredHanchans.length === 0) {
+                    tableHtml += `<tr><td colspan="${users.length + 1}" class="text-center py-4 text-gray-500">NO DATA</td></tr>`;
+                } else {
+                    let lastDate = null;
+                    filteredHanchans.forEach(hanchan => {
+                        const currentDate = hanchan.date.split('(')[0];
+                        let borderClass = '';
+                        if (lastDate && currentDate !== lastDate) {
+                            borderClass = 'border-t-2 border-gray-500';
                         }
-                    });
-                    tableHtml += `</tr>`;
-                });
+                        lastDate = currentDate;
 
-                tableHtml += `</tbody></table>`;
-                return tableHtml;
-            };
-            
-            rawListContainer.innerHTML = createTable('rawScores');
-            ptListContainer.innerHTML = createTable('points');
-        }
-
-        function renderYakumanList() {
-            const container = document.getElementById('yakuman-list');
-            if (!container) return;
-
-            const allYakumans = [];
-            games.forEach(game => {
-                if (game.scores) {
-                    game.scores.forEach((hanchan, index) => {
-                        if (hanchan.yakumans && hanchan.yakumans.length > 0) {
-                            hanchan.yakumans.forEach(y => {
-                                allYakumans.push({
-                                    ...y,
-                                    date: game.gameDate,
-                                    hanchanNum: index + 1,
-                                    gameId: game.id
-                                });
-                            });
-                        }
+                        const scores = hanchan[dataType];
+                        const scoreGroups = {};
+                        Object.entries(hanchan.rawScores).forEach(([pId, score]) => {
+                            if (!scoreGroups[score]) scoreGroups[score] = [];
+                            scoreGroups[score].push(pId);
+                        });
+                        const sortedScores = Object.keys(scoreGroups).map(Number).sort((a, b) => b - a);
+                        
+                        const ranks = {};
+                        let rankCursor = 1;
+                        sortedScores.forEach(score => {
+                            const playersInGroup = scoreGroups[score];
+                            playersInGroup.forEach(pId => { ranks[pId] = rankCursor; });
+                            rankCursor += playersInGroup.length;
+                        });
+                        
+                        tableHtml += `<tr class="${borderClass}"><td class="px-2 py-2 whitespace-nowrap">${hanchan.date} (#${hanchan.hanchanNum})</td>`;
+                        users.forEach(user => {
+                            if (scores[user.id] !== undefined) {
+                                const rank = ranks[user.id];
+                                let rankClass = '';
+                                if (rank === 1) rankClass = 'text-rank-1';
+                                if (rank === 4) rankClass = 'text-rank-4';
+                                tableHtml += `<td class="px-2 py-2 text-right ${rankClass}">${dataType === 'points' ? scores[user.id].toFixed(1) : scores[user.id].toLocaleString()}</td>`;
+                            } else {
+                                tableHtml += `<td class="px-2 py-2 text-right text-gray-600">-</td>`;
+                            }
+                        });
+                        tableHtml += `</tr>`;
                     });
                 }
-            });
 
-            if (allYakumans.length === 0) {
-                container.innerHTML = `<p class="text-gray-500">まだ役満は記録されていません。</p>`;
-                return;
-            }
+                tableHtml += `</tbody></table>`;
+                container.innerHTML = tableHtml;
+            };
+            
+            const rawYear = document.getElementById('history-raw-year-filter').value;
+            const rawMonth = document.getElementById('history-raw-month-filter').value;
+            const rawPlayer = document.getElementById('history-raw-player-filter').value;
+            createTable('rawScores', rawListContainer, rawYear, rawMonth, rawPlayer);
 
-            container.innerHTML = allYakumans.sort((a,b) => new Date(b.date.split('(')[0]) - new Date(a.date.split('(')[0])).map(y => {
-                const user = users.find(u => u.id === y.playerId);
-                const photoHtml = getPlayerPhotoHtml(y.playerId, 'w-10 h-10');
-                return `
-                    <div class="bg-gray-900 p-3 rounded-lg border border-gray-700 flex items-center justify-between gap-4">
-                        <div class="flex items-center gap-3">
-                            ${photoHtml}
-                            <div>
-                                <p class="font-bold text-blue-400">${user ? user.name : '不明'}</p>
-                                <p class="text-xs text-gray-400">${y.date}</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-lg font-bold text-yellow-400 glowing-text">${y.yakumanName}</p>
-                        </div>
-                    </div>
-                `;
-            }).join('');
+            const ptYear = document.getElementById('history-pt-year-filter').value;
+            const ptMonth = document.getElementById('history-pt-month-filter').value;
+            const ptPlayer = document.getElementById('history-pt-player-filter').value;
+            createTable('points', ptListContainer, ptYear, ptMonth, ptPlayer);
         }
 
         // --- Stats Page ---
@@ -1298,6 +1505,32 @@
                 statCardsContainer.innerHTML = `<div class="col-span-full text-center text-gray-500 py-4">データがありません</div>`;
                 return; // No data, no charts
             }
+            
+            // --- Top 3 Players ---
+            const top3Container = document.getElementById('top-3-container');
+            if (top3Container && allPlayers.length > 0) {
+                const top3 = allPlayers.slice(0, 3);
+                top3Container.innerHTML = `
+                    <h3 class="cyber-header text-xl font-bold mb-4 text-center text-yellow-300">現時点トップ３</h3>
+                    <div class="flex justify-around items-end gap-4">
+                        ${top3.map((p, i) => {
+                            const rankClass = i === 0 ? 'text-rank-gold' : (i === 1 ? 'text-rank-silver' : 'text-rank-bronze');
+                            const sizeClass = i === 0 ? 'w-24 h-24' : (i === 1 ? 'w-20 h-20' : 'w-16 h-16');
+                            const nameSize = i === 0 ? 'text-lg' : (i === 1 ? 'text-base' : 'text-sm');
+                            return `
+                            <div class="text-center flex flex-col items-center">
+                                <span class="font-bold text-2xl ${rankClass}">${i+1}</span>
+                                ${getPlayerPhotoHtml(p.id, sizeClass)}
+                                <span class="font-bold ${nameSize} mt-2 text-blue-400">${p.name}</span>
+                                <span class="text-sm ${p.totalPoints >= 0 ? 'text-green-400' : 'text-red-400'}">${p.totalPoints.toFixed(1)} pt</span>
+                            </div>
+                            `
+                        }).join('')}
+                    </div>
+                `;
+            } else if (top3Container) {
+                top3Container.innerHTML = '';
+            }
 
             // --- 2. Radar Chart ---
             const radarPlayerSelect = document.getElementById('radar-player-select');
@@ -1308,7 +1541,7 @@
             if (existingCheckboxes.length > 0 && Array.from(existingCheckboxes).some(cb => cb.checked)) {
                 selectedRadarPlayerIds = Array.from(existingCheckboxes).filter(cb => cb.checked).map(cb => cb.value);
             } else {
-                selectedRadarPlayerIds = allPlayers.slice(0, 4).map(p => p.id);
+                selectedRadarPlayerIds = allPlayers.map(p => p.id);
             }
 
             radarPlayerSelect.innerHTML = rankedUsersForSelection.map(u => {
@@ -1390,7 +1623,7 @@
                     data: history,
                     borderColor: colors[index % colors.length],
                     backgroundColor: colors[index % colors.length] + '33',
-                    fill: true, 
+                    fill: false, 
                     tension: 0.1
                 }
             });
@@ -1613,7 +1846,8 @@
             });
             hanchanScores = game.scores.map(s => ({
                 rawScores: s.rawScores,
-                yakumans: s.yakumans || []
+                yakumanEvents: s.yakumanEvents || [],
+                penalties: s.penalties || []
             }));
 
             // Switch to game tab
@@ -1725,11 +1959,21 @@
 
                 const { points, rawRanks, pointRanks } = calculateHanchanRanksAndPoints(scores);
 
-                const yakumanHtml = (hanchan.yakumans && hanchan.yakumans.length > 0)
+                const yakumanHtml = (hanchan.yakumanEvents && hanchan.yakumanEvents.length > 0)
                     ? `<div class="mt-2 border-t border-gray-700 pt-2">
-                        ${hanchan.yakumans.map(y => {
+                        ${hanchan.yakumanEvents.map(y => {
                             const user = users.find(u => u.id === y.playerId);
-                            return `<span class="text-xs inline-block bg-yellow-900 text-yellow-300 rounded-full px-2 py-1 mr-1 mb-1">${user ? user.name : ''}: ${y.yakumanName}</span>`
+                            return `<span class="text-xs inline-block bg-yellow-900 text-yellow-300 rounded-full px-2 py-1 mr-1 mb-1">${user ? user.name : ''}: ${y.yakumans.join(', ')}</span>`
+                        }).join('')}
+                       </div>`
+                    : '';
+
+                const penaltyHtml = (hanchan.penalties && hanchan.penalties.length > 0)
+                    ? `<div class="mt-2 border-t border-gray-700 pt-2">
+                        ${hanchan.penalties.map(p => {
+                            const user = users.find(u => u.id === p.playerId);
+                            const typeText = p.type === 'chombo' ? 'チョンボ' : 'アガリ放棄';
+                            return `<span class="text-xs inline-block bg-red-900 text-red-300 rounded-full px-2 py-1 mr-1 mb-1">${user ? user.name : ''}: ${typeText} (${p.reason}) x${p.count}</span>`
                         }).join('')}
                        </div>`
                     : '';
@@ -1777,6 +2021,7 @@
                             </tfoot>
                         </table>
                         ${yakumanHtml}
+                        ${penaltyHtml}
                     </div>
                 </div>
                 `;
@@ -1789,7 +2034,7 @@
         }
 
         window.addHanchan = () => {
-            const newHanchan = { rawScores: {}, yakumans: [] };
+            const newHanchan = { rawScores: {}, yakumanEvents: [], penalties: [] };
             selectedPlayers.forEach(p => {
                 newHanchan.rawScores[p.id] = null;
             });
@@ -1820,13 +2065,10 @@
                     <div class="space-y-3">
                         ${selectedPlayers.map(p => `
                             <div>
-                                <div class="flex justify-between items-center mb-1">
-                                    <label class="flex items-center gap-2">
-                                        ${getPlayerPhotoHtml(p.id, 'w-8 h-8')}
-                                        <span class="text-sm font-medium text-gray-400">${p.name}</span>
-                                    </label>
-                                    <button onclick="openYakumanSelectorModal(${index}, '${p.id}')" class="cyber-btn text-xs px-2 py-1 rounded-md">＋役満</button>
-                                </div>
+                                <label class="flex items-center gap-2 mb-1">
+                                    ${getPlayerPhotoHtml(p.id, 'w-8 h-8')}
+                                    <span class="text-sm font-medium text-gray-400">${p.name}</span>
+                                </label>
                                 <input type="text" id="modal-score-${p.id}" 
                                        class="modal-score-input block w-full shadow-sm sm:text-lg p-2 text-right border-2 border-transparent bg-zinc-800" 
                                        value="${scores[p.id] !== null ? scores[p.id] : ''}" 
@@ -1835,9 +2077,13 @@
                             </div>
                         `).join('')}
                          <div>
-                             <label class="block text-sm font-medium text-gray-400 mt-2">合計</label>
-                             <div id="modal-total-score" class="mt-1 block w-full bg-zinc-900 p-2 text-right sm:text-lg font-bold">0</div>
-                         </div>
+                            <label class="block text-sm font-medium text-gray-400 mt-2">合計</label>
+                            <div id="modal-total-score" class="mt-1 block w-full bg-zinc-900 p-2 text-right sm:text-lg font-bold">0</div>
+                        </div>
+                         <div class="flex gap-2 pt-4">
+                            <button onclick="openYakumanEventModal(${index})" class="cyber-btn text-sm px-3 py-2 rounded-md w-full"><i class="fas fa-dragon mr-2"></i>役満を追加</button>
+                            <button onclick="openPenaltyModal(${index})" class="cyber-btn-red text-sm px-3 py-2 rounded-md w-full"><i class="fas fa-exclamation-triangle mr-2"></i>ペナルティを追加</button>
+                        </div>
                     </div>
                     <!-- Numeric Keypad -->
                     <div class="grid grid-cols-3 gap-2">
@@ -1860,31 +2106,145 @@
             updateModalTotal();
         };
 
-        window.openYakumanSelectorModal = (hanchanIndex, playerId) => {
-            const user = users.find(u => u.id === playerId);
+        window.openYakumanEventModal = (hanchanIndex) => {
+            const playerOptions = selectedPlayers.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            const yakumanCheckboxes = YAKUMAN_LIST.map(y => `
+                <label class="flex items-center space-x-2">
+                    <input type="checkbox" name="yakuman-checkbox" value="${y}" class="form-checkbox h-5 w-5 text-blue-600 bg-gray-800 border-gray-600 rounded" onchange="window.updateYakumanCheckboxes()">
+                    <span>${y}</span>
+                </label>
+            `).join('');
+
             let modalContent = `
-                <h3 class="cyber-header text-xl font-bold text-yellow-300 mb-4">${user.name}の役満を選択</h3>
-                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    ${YAKUMAN_LIST.map(yakuman => `
-                        <button onclick="addYakumanToHanchan(${hanchanIndex}, '${playerId}', '${yakuman}')" class="cyber-btn p-3 text-sm">${yakuman}</button>
-                    `).join('')}
+                <h3 class="cyber-header text-xl font-bold text-yellow-300 mb-4">役満記録</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400">雀士</label>
+                        <select id="yakuman-player-select" class="mt-1 block w-full rounded-md">${playerOptions}</select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400">役満 (複数選択可)</label>
+                        <div id="yakuman-checkbox-container" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">${yakumanCheckboxes}</div>
+                    </div>
                 </div>
-                <div class="flex justify-end mt-6">
+                <div class="flex justify-end mt-6 gap-2">
                     <button onclick="openScoreInputModal(${hanchanIndex})" class="cyber-btn px-4 py-2">戻る</button>
+                    <button onclick="addYakumanEvent(${hanchanIndex})" class="cyber-btn-green px-4 py-2">記録する</button>
+                </div>
+            `;
+            showModal(modalContent);
+        };
+        
+        window.updateYakumanCheckboxes = () => {
+            const checkboxes = document.querySelectorAll('input[name="yakuman-checkbox"]');
+            const selectedYakumans = Array.from(checkboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+
+            let incompatibleYakumans = new Set();
+            selectedYakumans.forEach(yakuman => {
+                if (YAKUMAN_INCOMPATIBILITY[yakuman]) {
+                    YAKUMAN_INCOMPATIBILITY[yakuman].forEach(incompatible => {
+                        incompatibleYakumans.add(incompatible);
+                    });
+                }
+            });
+
+            checkboxes.forEach(checkbox => {
+                const label = checkbox.parentElement;
+                if (!selectedYakumans.includes(checkbox.value) && incompatibleYakumans.has(checkbox.value)) {
+                    checkbox.disabled = true;
+                    label.classList.add('yakuman-label-disabled');
+                } else {
+                    checkbox.disabled = false;
+                    label.classList.remove('yakuman-label-disabled');
+                }
+            });
+        };
+
+        window.addYakumanEvent = (hanchanIndex) => {
+            const playerId = document.getElementById('yakuman-player-select').value;
+            const selectedYakuman = Array.from(document.querySelectorAll('input[name="yakuman-checkbox"]:checked')).map(cb => cb.value);
+
+            if (!playerId || selectedYakuman.length === 0) {
+                showModalMessage("雀士と役満を選択してください。");
+                return;
+            }
+
+            const hanchan = hanchanScores[hanchanIndex];
+            if (!hanchan.yakumanEvents) {
+                hanchan.yakumanEvents = [];
+            }
+            hanchan.yakumanEvents.push({ playerId, yakumans: selectedYakuman });
+            
+            showModalMessage("役満を記録しました！");
+            renderScoreDisplay();
+            setTimeout(() => openScoreInputModal(hanchanIndex), 1500);
+        };
+        
+        window.openPenaltyModal = (hanchanIndex) => {
+            const playerOptions = selectedPlayers.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            const chomboReasons = PENALTY_REASONS.chombo.map(r => `<option value="${r}">${r}</option>`).join('');
+            const agariHoukiReasons = PENALTY_REASONS.agariHouki.map(r => `<option value="${r}">${r}</option>`).join('');
+
+            let modalContent = `
+                <h3 class="cyber-header text-xl font-bold text-red-400 mb-4">ペナルティ記録</h3>
+                <div class="space-y-4">
+                     <div>
+                        <label class="block text-sm font-medium text-gray-400">雀士</label>
+                        <select id="penalty-player-select" class="mt-1 block w-full rounded-md">${playerOptions}</select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400">種類</label>
+                         <select id="penalty-type-select" class="mt-1 block w-full rounded-md" onchange="updatePenaltyReasons()">
+                            <option value="chombo">チョンボ</option>
+                            <option value="agariHouki">アガリ放棄</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400">原因</label>
+                        <select id="penalty-reason-select" class="mt-1 block w-full rounded-md">${chomboReasons}</select>
+                    </div>
+                     <div>
+                        <label class="block text-sm font-medium text-gray-400">回数</label>
+                        <input type="number" id="penalty-count-input" value="1" class="mt-1 block w-full rounded-md">
+                    </div>
+                </div>
+                <div class="flex justify-end mt-6 gap-2">
+                    <button onclick="openScoreInputModal(${hanchanIndex})" class="cyber-btn px-4 py-2">戻る</button>
+                    <button onclick="addPenalty(${hanchanIndex})" class="cyber-btn-red px-4 py-2">記録する</button>
                 </div>
             `;
             showModal(modalContent);
         };
 
-        window.addYakumanToHanchan = (hanchanIndex, playerId, yakumanName) => {
-            const hanchan = hanchanScores[hanchanIndex];
-            if (!hanchan.yakumans) {
-                hanchan.yakumans = [];
+        window.updatePenaltyReasons = () => {
+            const type = document.getElementById('penalty-type-select').value;
+            const reasonSelect = document.getElementById('penalty-reason-select');
+            const reasons = PENALTY_REASONS[type];
+            reasonSelect.innerHTML = reasons.map(r => `<option value="${r}">${r}</option>`).join('');
+        };
+
+        window.addPenalty = (hanchanIndex) => {
+            const playerId = document.getElementById('penalty-player-select').value;
+            const type = document.getElementById('penalty-type-select').value;
+            const reason = document.getElementById('penalty-reason-select').value;
+            const count = parseInt(document.getElementById('penalty-count-input').value, 10);
+
+            if (!playerId || !type || !reason || isNaN(count) || count < 1) {
+                showModalMessage("全ての項目を正しく入力してください。");
+                return;
             }
-            hanchan.yakumans.push({ playerId, yakumanName });
-            showModalMessage(`${yakumanName}を記録しました！`);
-            renderScoreDisplay(); // Update main view to show yakuman tag
-            setTimeout(() => openScoreInputModal(hanchanIndex), 1500); // Re-open score modal
+            
+            const hanchan = hanchanScores[hanchanIndex];
+            if (!hanchan.penalties) {
+                hanchan.penalties = [];
+            }
+            hanchan.penalties.push({ playerId, type, reason, count });
+            
+            showModalMessage("ペナルティを記録しました。");
+            renderScoreDisplay();
+            setTimeout(() => openScoreInputModal(hanchanIndex), 1500);
         };
 
 
@@ -2368,6 +2728,7 @@
         };
 
         window.displayHeadToHeadStats = () => {
+            updateHeadToHeadDropdowns();
             const p1Id = document.getElementById('h2h-player1')?.value;
             const p2Id = document.getElementById('h2h-player2')?.value;
             const resultsContainer = document.getElementById('h2h-results');
@@ -2433,6 +2794,390 @@
                 ${draws > 0 ? `<p class="mt-4 text-gray-500">引き分け: ${draws}回</p>` : ''}
             `;
         };
+
+        // --- Trophy Functions ---
+        const TROPHY_DEFINITIONS = {
+            bronze: [
+                { id: 'first_game', name: '初陣', desc: '初めて対局に参加する', icon: 'fa-chess-pawn' },
+                { id: 'first_top', name: '初トップ', desc: '初めてトップを取る', icon: 'fa-crown' },
+                { id: 'first_plus_day', name: '初勝利の味', desc: '初めて1日の収支をプラスで終える', icon: 'fa-arrow-trend-up' },
+                { id: 'ten_games', name: '雀士認定', desc: '累計10半荘を戦い抜く', icon: 'fa-user-check' },
+                { id: 'first_busted', name: 'これも経験', desc: '初めてトんだ', icon: 'fa-piggy-bank' },
+                { id: 'first_last', name: '捲土重来の誓い', desc: '初めて4位で半荘を終えた', icon: 'fa-flag' },
+                { id: 'score_under_1000', name: '虫の息', desc: '持ち点が1,000点未満の状態で対局を終える', icon: 'fa-heart-pulse' },
+                { id: 'daily_high_score', name: '今日のヒーロー', desc: '1日の対局で最も高いスコアを記録する', icon: 'fa-star' },
+                // { id: 'chombo', name: '学びの代償', desc: '初めてチョンボを記録する', icon: 'fa-book-open' },
+                // { id: 'agari_houki', name: '不幸中の幸い', desc: '初めてアガリ放棄を記録する', icon: 'fa-hands-praying' },
+            ],
+            silver: [
+                { id: 'twenty_five_games', name: 'リーグの主軸', desc: '累計25半荘を戦い抜く', icon: 'fa-users' },
+                { id: 'yakuman', name: '神域の淵', desc: '初めて役満を和了する', icon: 'fa-dragon' },
+                { id: 'plus_100_day', name: '爆勝ち', desc: '1日で合計+100pt以上を獲得する', icon: 'fa-sack-dollar' },
+                { id: 'five_rentai', name: '連対の鬼', desc: '5連続で連対(1位か2位)を達成する', icon: 'fa-link' },
+                { id: 'score_over_50k', name: '高打点メーカー', desc: '1半荘で50,000点以上を獲得する', icon: 'fa-bomb' },
+                { id: 'dramatic_finish', name: 'ドラマティック・フィニッシュ', desc: '1日の最終半荘で逆転して1位になる', icon: 'fa-film' },
+                { id: 'ten_tops', name: 'トップハンター', desc: '通算1位獲得回数が10回に到達する', icon: 'fa-crosshairs' },
+                { id: 'monthly_player', name: 'マンスリープレイヤー', desc: '1か月のうちに15半荘以上対局する', icon: 'fa-calendar-days' },
+                { id: 'zero_point_finish', name: '実質何もしてない', desc: '収支が±0.0で対局を終える', icon: 'fa-equals' },
+                // { id: 'jisaku_jien', name: '自作自演', desc: 'チョンボをした対局で、最終的にプラス収支で終える', icon: 'fa-theater-masks' },
+
+            ],
+            gold: [
+                { id: 'fifty_tops', name: '伝説の始まり', desc: '通算1位獲得回数が50回に到達する', icon: 'fa-book-journal-whills' },
+                { id: 'self_redemption', name: '自らの尻拭い', desc: '前回の対局のマイナス収支を、今回のプラス収支で完全に取り返す', icon: 'fa-hand-sparkles' },
+                { id: 'close_win', name: 'ハナ差', desc: '2位と1,000点未満の点差で1位になる', icon: 'fa-ruler-horizontal' },
+                { id: 'all_negative_win', name: 'やりたい事やりすぎ', desc: 'その半荘の参加者全員をマイナス収支にして1位を取る', icon: 'fa-volcano' },
+                { id: 'ten_no_last', name: 'カッチカチ麻雀', desc: '10半荘連続でラス回避をする', icon: 'fa-shield-virus' },
+                { id: 'three_same_rank', name: 'マイブーム？', desc: '3半荘連続で同じ順位を取り続ける', icon: 'fa-clone' },
+                { id: 'finish_over_50k', name: '勝者の余裕', desc: '1回の対局で50,000点以上を獲得して終了する', icon: 'fa-champagne-glasses' },
+                { id: 'score_under_minus_30k', name: '地底の奥底', desc: '-30,000点未満で対局を終える', icon: 'fa-person-falling-burst' },
+            ],
+            platinum: [
+                { id: 'two_hundred_games', name: '君がいなきゃ始まらない', desc: '累計200半荘を戦い抜く', icon: 'fa-book-skull' },
+                { id: 'four_top_streak', name: '雀神の導き', desc: '4半荘連続で1位を獲得する', icon: 'fa-brain' },
+                { id: 'twenty_five_no_last', name: '絶対防衛線', desc: '25回連続でラスを回避する', icon: 'fa-torii-gate' },
+                { id: 'finish_over_70k', name: '背中も見せない', desc: '70,000点以上を獲得して対局を終える', icon: 'fa-person-running' },
+                { id: 'avg_rank_2_3', name: '圧倒的実力', desc: '年間平均順位が2.3以下（年間50半荘以上）', icon: 'fa-chart-line' },
+                { id: 'ten_close_games', name: '歴戦の猛者', desc: '1,000点差以内の僅差での決着を10回経験する（勝ち負け問わず）', icon: 'fa-swords' },
+                { id: 'undefeated_month', name: '無敗神話', desc: '1ヶ月間（月間10半荘以上）、一度も4位を取らない', icon: 'fa-calendar-check' },
+                { id: 'kokushi', name: '十三の旗印', desc: '国士無双を和了する', icon: 'fa-flag', secret: true },
+                { id: 'suuankou', name: '闇に潜む刺客', desc: '四暗刻を和了する', icon: 'fa-user-secret', secret: true },
+                { id: 'daisangen', name: '三元龍の咆哮', desc: '大三元を和了する', icon: 'fa-dragon', secret: true },
+                { id: 'tsuuiisou', name: '刻まれし言霊', desc: '字一色を和了する', icon: 'fa-font', secret: true },
+                { id: 'ryuuiisou', name: '翠玉の輝き', desc: '緑一色を和了する', icon: 'fa-leaf', secret: true },
+                { id: 'chinroutou', name: '万物の始祖', desc: '清老頭を和了する', icon: 'fa-dice-one', secret: true },
+                { id: 'chuuren', name: '九連の灯火', desc: '九蓮宝燈を和了する', icon: 'fa-lightbulb', secret: true },
+                { id: 'shousuushii', name: '風の支配者', desc: '小四喜を和了する', icon: 'fa-wind', secret: true },
+            ],
+            crystal: [
+                { id: 'five_top_streak', name: '天衣無縫', desc: '5半荘連続で1位を獲得する', icon: 'fa-feather-pointed' },
+                { id: 'yearly_avg_rank_2_0', name: '頂への道', desc: '年間平均順位が2.0以下（年間50戦以上）', icon: 'fa-mountain-sun' },
+                { id: 'recent_100_avg_rank_1_5', name: '全知全能', desc: '直近100半荘の平均着順が1.5以下', icon: 'fa-eye' },
+                { id: 'thirty_no_last', name: 'アルティメット・ガーディアン', desc: '30半荘連続でラスを回避する', icon: 'fa-shield-heart' },
+                { id: 'finish_over_100k', name: '膏血の強奪', desc: '100,000点以上を獲得して対局を終える', icon: 'fa-gem' },
+                { id: 'two_yakuman_day', name: '神はサイコロを振らない', desc: '1日のうちに2回役満を和了する', icon: 'fa-dice' },
+                { id: 'three_yakuman_types', name: '役満コレクター', desc: '3種類以上の役満を和了する', icon: 'fa-box-archive' },
+                { id: 'tenhou', name: '天命', desc: '天和を和了する', icon: 'fa-hand-sparkles', secret: true },
+                { id: 'chiihou', name: '地の啓示', desc: '地和を和了する', icon: 'fa-hand-holding-hand', secret: true },
+                { id: 'kokushi13', name: '終焉の十三面', desc: '国士無双十三面待ちを和了する', icon: 'fa-skull', secret: true },
+                { id: 'suuankou_tanki', name: '静寂切り裂く一閃', desc: '四暗刻単騎を和了する', icon: 'fa-user-ninja', secret: true },
+                { id: 'junsei_chuuren', name: '死の篝火', desc: '純正九蓮宝燈を和了する', icon: 'fa-fire', secret: true },
+                { id: 'daisuushii', name: '風を統べる者', desc: '大四喜を和了する', icon: 'fa-tornado', secret: true },
+                // { id: 'chombo_then_yakuman', name: '神託の体現者', desc: 'チョンボをしたその日の残りの半荘で役満を和了する', icon: 'fa-bolt' },
+            ],
+            chaos: [
+                { id: 'yakuman_then_busted_last', name: '天国と地獄', desc: '役満を和了した次の対局で、ハコテンラスになる', icon: 'fa-yin-yang' },
+                { id: 'perfect_world', name: '完全世界', desc: '4人の最終スコアが、1位から順に40,000、30,000、20,000、10,000点になる', icon: 'fa-globe' },
+                { id: 'reincarnation', name: '輪廻転生', desc: '4人の順位が、前回の対局の順位から完全に逆転する', icon: 'fa-recycle' },
+                { id: 'reroll', name: 'リセマラ', desc: '最初の持ち点と全く同じ点数で対局を終える', icon: 'fa-arrow-rotate-left' },
+                { id: 'chaos_theory', name: 'カオス理論', desc: '4半荘連続で、4人全員が違う順位になる', icon: 'fa-hurricane' },
+                { id: 'peaceful_village', name: '平和村', desc: '4人の最終スコアが、全員25,000点ずつになる', icon: 'fa-dove' },
+                // { id: 'butterfly_effect', name: 'バタフライ・エフェクト', desc: 'チョンボによるペナルティがなければ、自分が1位だった', icon: 'fa-bug' },
+            ]
+        };
+
+        function renderTrophyTab() {
+            const container = document.getElementById('trophy-tab');
+            if (!container) return;
+            container.innerHTML = `
+                <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                    <h2 class="cyber-header text-2xl font-bold text-blue-400">トロフィー</h2>
+                    <div class="flex items-center gap-4">
+                        <select id="trophy-year-filter" onchange="window.updateTrophyPage()" class="rounded-md p-1"></select>
+                        <select id="trophy-player-filter" onchange="window.updateTrophyPage()" class="rounded-md p-1"></select>
+                    </div>
+                </div>
+                <div id="trophy-list-container" class="space-y-8"></div>
+            `;
+        }
+
+        window.updateTrophyPage = function() {
+            const container = document.getElementById('trophy-list-container');
+            const yearSelect = document.getElementById('trophy-year-filter');
+            const playerSelect = document.getElementById('trophy-player-filter');
+
+            if (!container || !yearSelect || !playerSelect) return;
+
+            // Preserve current selection before repopulating
+            const currentYear = yearSelect.value;
+            const currentPlayer = playerSelect.value;
+
+            // Regenerate options
+            const yearOptions = getGameYears().map(year => `<option value="${year}" ${currentYear === year ? 'selected' : ''}>${year}年</option>`).join('');
+            const playerOptions = users.map(u => `<option value="${u.id}" ${currentPlayer === u.id ? 'selected' : ''}>${u.name}</option>`).join('');
+
+            // Update select elements' innerHTML
+            yearSelect.innerHTML = `<option value="all" ${currentYear === 'all' || !currentYear ? 'selected' : ''}>全期間</option>${yearOptions}`;
+            playerSelect.innerHTML = `<option value="all" ${currentPlayer === 'all' || !currentPlayer ? 'selected' : ''}>全選択</option>${playerOptions}`;
+
+            // Get the final filter values
+            const yearFilter = yearSelect.value;
+            const playerFilter = playerSelect.value;
+
+            // Filter games based on the selected year
+            const filteredGames = games.filter(game => {
+                if (yearFilter === 'all') return true;
+                const gameYear = (game.gameDate || '').substring(0, 4);
+                return gameYear === yearFilter;
+            });
+            
+            // Calculate stats for the filtered period
+            const statsForPeriod = calculateAllPlayerStats(filteredGames);
+
+            // Check which trophies have been achieved based on filtered data
+            checkAllTrophies(filteredGames, statsForPeriod);
+
+            // Render the trophy list
+            let html = '';
+            Object.entries(TROPHY_DEFINITIONS).forEach(([rank, trophies]) => {
+                html += `<div class="rank-category">
+                    <h3 class="cyber-header text-xl font-bold mb-4 border-b-2 pb-2" style="border-color: var(--rank-${rank}); color: var(--rank-${rank});">${rank.charAt(0).toUpperCase() + rank.slice(1)}</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        ${trophies.map(trophy => {
+                            let isAchieved = false;
+                            // Check achievement based on the player filter
+                            if (playerFilter === 'all') {
+                                isAchieved = Object.values(playerTrophies).some(p => p[trophy.id]);
+                            } else {
+                                isAchieved = playerTrophies[playerFilter]?.[trophy.id] || false;
+                            }
+                            const secretClass = trophy.secret ? 'secret' : '';
+                            const trophyName = (trophy.secret && !isAchieved) ? '？？？' : trophy.name;
+                            const trophyDesc = (trophy.secret && !isAchieved) ? '条件を満たすと開示されます' : trophy.desc;
+                            const trophyIcon = (trophy.secret && !isAchieved) ? 'fa-question-circle' : trophy.icon;
+
+                            return `
+                            <div class="trophy-card p-4 flex items-center gap-4 rounded-lg rank-${rank} ${isAchieved ? 'achieved' : ''} ${secretClass}">
+                                <i class="fas ${trophyIcon} fa-3x w-12 text-center trophy-icon"></i>
+                                <div>
+                                    <h4 class="font-bold text-lg">${trophyName}</h4>
+                                    <p class="text-sm text-gray-400">${trophyDesc}</p>
+                                </div>
+                            </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+        
+        function checkAllTrophies(targetGames, currentStats) {
+            playerTrophies = {};
+            const rankedUsers = Object.values(currentStats).filter(u => u.totalHanchans > 0).sort((a,b) => b.totalPoints - a.totalPoints);
+
+            users.forEach(user => {
+                playerTrophies[user.id] = {};
+                const stats = currentStats[user.id];
+                if (!stats || stats.totalHanchans === 0) return;
+
+                const playerGames = targetGames.filter(g => g.playerIds.includes(user.id));
+                const dailyPoints = {};
+                const dailyScores = {};
+                const monthlyHanchans = {};
+
+                playerGames.forEach(g => {
+                    if (g.gameDate) {
+                        const date = g.gameDate.split('(')[0];
+                        if(!dailyPoints[date]) dailyPoints[date] = 0;
+                        dailyPoints[date] += g.totalPoints[user.id];
+                        
+                        if(!dailyScores[date]) dailyScores[date] = [];
+                        g.scores.forEach(s => dailyScores[date].push(s.rawScores[user.id]));
+
+                        const month = g.gameDate.substring(0, 7); // yyyy/mm
+                        if(!monthlyHanchans[month]) monthlyHanchans[month] = 0;
+                        monthlyHanchans[month] += g.scores.length;
+
+                    }
+                });
+                
+                // Bronze
+                playerTrophies[user.id].first_game = stats.totalHanchans > 0;
+                playerTrophies[user.id].first_top = stats.ranks[0] > 0;
+                playerTrophies[user.id].first_plus_day = Object.values(dailyPoints).some(p => p > 0);
+                playerTrophies[user.id].ten_games = stats.totalHanchans >= 10;
+                playerTrophies[user.id].first_busted = stats.bustedCount > 0;
+                playerTrophies[user.id].first_last = stats.ranks[3] > 0;
+                playerTrophies[user.id].score_under_1000 = playerGames.some(g => g.scores.some(s => s.rawScores[user.id] < 1000 && s.rawScores[user.id] >= 0));
+                playerTrophies[user.id].daily_high_score = Object.keys(dailyPoints).some(date => {
+                    let maxScoreToday = -Infinity;
+                    targetGames.filter(g => g.gameDate && g.gameDate.startsWith(date)).forEach(g => {
+                        g.scores.forEach(s => {
+                            Object.values(s.rawScores).forEach(score => {
+                                if(score > maxScoreToday) maxScoreToday = score;
+                            })
+                        })
+                    });
+                    return dailyScores[date] && dailyScores[date].some(s => s === maxScoreToday);
+                });
+
+
+                // Silver
+                playerTrophies[user.id].twenty_five_games = stats.totalHanchans >= 25;
+                playerTrophies[user.id].yakuman = stats.yakumanCount > 0;
+                playerTrophies[user.id].plus_100_day = Object.values(dailyPoints).some(p => p >= 100);
+                playerTrophies[user.id].five_rentai = stats.maxStreak.rentai >= 5;
+                playerTrophies[user.id].score_over_50k = playerGames.some(g => g.scores.some(s => s.rawScores[user.id] >= 50000));
+                playerTrophies[user.id].ten_tops = stats.ranks[0] >= 10;
+                playerTrophies[user.id].monthly_player = Object.values(monthlyHanchans).some(count => count >= 15);
+                playerTrophies[user.id].zero_point_finish = playerGames.some(g => g.totalPoints[user.id] === 0.0);
+                
+                const allDailyPoints = {};
+                targetGames.forEach(g => {
+                    if (g.gameDate) {
+                        const date = g.gameDate.split('(')[0];
+                        if (!allDailyPoints[date]) {
+                            allDailyPoints[date] = {};
+                        }
+                        Object.entries(g.totalPoints).forEach(([pId, points]) => {
+                            if (!allDailyPoints[date][pId]) {
+                                allDailyPoints[date][pId] = 0;
+                            }
+                            allDailyPoints[date][pId] += points;
+                        });
+                    }
+                });
+
+                playerTrophies[user.id].dramatic_finish = Object.keys(dailyPoints).some(date => {
+                    const gamesOnDate = playerGames.filter(g => g.gameDate && g.gameDate.startsWith(date)).sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+                    if (gamesOnDate.length < 2) return false;
+
+                    const dailyTotalsForDate = allDailyPoints[date];
+                    if (!dailyTotalsForDate || Object.keys(dailyTotalsForDate).length === 0) return false;
+                    
+                    const winnerEntry = Object.entries(dailyTotalsForDate).reduce((a, b) => (a[1] > b[1] ? a : b), [null, -Infinity]);
+                    const dailyWinnerId = winnerEntry[0];
+
+                    if (dailyWinnerId !== user.id) return false;
+
+                    const lastGame = gamesOnDate[gamesOnDate.length - 1];
+                    
+                    const pointsBeforeLastGame = {};
+                    Object.entries(dailyTotalsForDate).forEach(([pId, total]) => {
+                        const pointsInLast = lastGame.totalPoints[pId] || 0;
+                        pointsBeforeLastGame[pId] = total - pointsInLast;
+                    });
+
+                    if (Object.keys(pointsBeforeLastGame).length === 0) return false;
+
+                    const winnerBeforeLastGameEntry = Object.entries(pointsBeforeLastGame).reduce((a, b) => (a[1] > b[1] ? a : b), [null, -Infinity]);
+                    const winnerBeforeLastGameId = winnerBeforeLastGameEntry[0];
+                    
+                    return winnerBeforeLastGameId !== user.id;
+                });
+                
+                // Gold
+                playerTrophies[user.id].fifty_tops = stats.ranks[0] >= 50;
+                playerTrophies[user.id].close_win = playerGames.some(g => g.scores.some(s => {
+                    const scores = Object.entries(s.rawScores).sort((a,b) => b[1] - a[1]);
+                    return scores.length > 1 && scores[0][0] === user.id && (scores[0][1] - scores[1][1]) < 1000;
+                }));
+                playerTrophies[user.id].all_negative_win = playerGames.some(g => g.scores.some(s => {
+                    const scores = Object.entries(s.rawScores);
+                    const myScore = scores.find(([pId]) => pId === user.id)?.[1] || 0;
+                    return myScore > 0 && scores.filter(([pId]) => pId !== user.id).every(([, score]) => score < 0);
+                }));
+                playerTrophies[user.id].ten_no_last = stats.maxStreak.noLast >= 10;
+                playerTrophies[user.id].three_same_rank = stats.maxStreak.sameRank >= 3;
+                playerTrophies[user.id].finish_over_50k = playerGames.some(g => g.scores.some(s => s.rawScores[user.id] >= 50000));
+                playerTrophies[user.id].score_under_minus_30k = playerGames.some(g => g.scores.some(s => s.rawScores[user.id] < -30000));
+                
+                // Platinum
+                playerTrophies[user.id].two_hundred_games = stats.totalHanchans >= 200;
+                playerTrophies[user.id].four_top_streak = stats.maxStreak.top >= 4;
+                playerTrophies[user.id].twenty_five_no_last = stats.maxStreak.noLast >= 25;
+                playerTrophies[user.id].finish_over_70k = playerGames.some(g => g.scores.some(s => s.rawScores[user.id] >= 70000));
+                playerTrophies[user.id].avg_rank_2_3 = stats.totalHanchans >= 50 && stats.avgRank <= 2.3;
+                let closeGamesCount = 0;
+                playerGames.forEach(g => {
+                    g.scores.forEach(s => {
+                        const scores = Object.values(s.rawScores).sort((a,b) => b - a);
+                        if (scores.length > 1 && (scores[0] - scores[1]) < 1000) closeGamesCount++;
+                    });
+                });
+                playerTrophies[user.id].ten_close_games = closeGamesCount >= 10;
+                playerTrophies[user.id].undefeated_month = Object.keys(monthlyHanchans).some(month => {
+                    if (monthlyHanchans[month] >= 10) {
+                        const gamesInMonth = playerGames.filter(g => g.gameDate && g.gameDate.startsWith(month));
+                        return !gamesInMonth.some(g => g.scores.some(s => {
+                            const ranks = {};
+                            const scoreGroups = {};
+                            Object.entries(s.rawScores).forEach(([pId, score]) => {
+                                if (!scoreGroups[score]) scoreGroups[score] = [];
+                                scoreGroups[score].push(pId);
+                            });
+                            const sortedScores = Object.keys(scoreGroups).map(Number).sort((a, b) => b - a);
+                            let rankCursor = 0;
+                            sortedScores.forEach(score => {
+                                const playersInGroup = scoreGroups[score];
+                                playersInGroup.forEach(pId => { ranks[pId] = rankCursor; });
+                                rankCursor += playersInGroup.length;
+                            });
+                            return ranks[user.id] === 3;
+                        }));
+                    }
+                    return false;
+                });
+
+                // Crystal
+                playerTrophies[user.id].four_top_streak_day = Object.keys(dailyPoints).some(date => {
+                    const gamesOnDate = playerGames.filter(g => g.gameDate && g.gameDate.startsWith(date)).sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+                    if (gamesOnDate.length < 1) return false;
+                    let consecutiveTops = 0;
+                    for (const game of gamesOnDate) {
+                        for (const hanchan of game.scores) {
+                             const scoreEntries = Object.entries(hanchan.rawScores).sort(([, a], [, b]) => b - a);
+                             if(scoreEntries[0][0] === user.id && scoreEntries[0][1] > (scoreEntries[1]?.[1] ?? -Infinity)) {
+                                 consecutiveTops++;
+                             } else {
+                                 consecutiveTops = 0;
+                             }
+                             if (consecutiveTops >= 4) return true;
+                        }
+                    }
+                    return false;
+                });
+                const opponents = users.filter(u => u.id !== user.id);
+                const winVsAll = opponents.every(opp => {
+                    let wins = 0; let losses = 0;
+                    targetGames.forEach(g => {
+                        if (g.playerIds.includes(user.id) && g.playerIds.includes(opp.id)) {
+                            g.scores.forEach(s => {
+                                if (s.rawScores[user.id] > s.rawScores[opp.id]) wins++;
+                                if (s.rawScores[user.id] < s.rawScores[opp.id]) losses++;
+                            });
+                        }
+                    });
+                    return (wins + losses >= 10) && (wins > losses);
+                });
+                playerTrophies[user.id].win_vs_all = opponents.length > 0 && winVsAll;
+                playerTrophies[user.id].rare_yakuman = playerGames.some(g => g.scores.some(s => s.yakumanEvents && s.yakumanEvents.some(y => y.playerId === user.id && y.yakumans.some(yakuman => ['国士無双十三面待ち', '四暗刻単騎', '純正九蓮宝燈', '大四喜'].includes(yakuman)))));
+
+                // Chaos
+                playerTrophies[user.id].four_last_streak_day = Object.keys(dailyPoints).some(date => {
+                    const gamesOnDate = playerGames.filter(g => g.gameDate && g.gameDate.startsWith(date)).sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+                    if (gamesOnDate.length < 1) return false;
+                     let consecutiveLasts = 0;
+                     for (const game of gamesOnDate) {
+                         for (const hanchan of game.scores) {
+                              const scoreEntries = Object.entries(hanchan.rawScores).sort(([, a], [, b]) => b - a);
+                              if(scoreEntries.length > 3 && scoreEntries[3][0] === user.id && scoreEntries[3][1] < scoreEntries[2][1]) {
+                                  consecutiveLasts++;
+                              } else {
+                                  consecutiveLasts = 0;
+                              }
+                              if (consecutiveLasts >= 4) return true;
+                         }
+                     }
+                     return false;
+                });
+                playerTrophies[user.id].minus_200_day = Object.values(dailyPoints).some(p => p <= -200);
+                playerTrophies[user.id].busted_minus_50k = playerGames.some(g => g.scores.some(s => s.rawScores[user.id] <= -50000));
+                playerTrophies[user.id].yearly_last_player = rankedUsers.length > 0 && rankedUsers[rankedUsers.length - 1].id === user.id;
+            });
+        }
+
 
         initializeAppAndAuth();
     </script>
