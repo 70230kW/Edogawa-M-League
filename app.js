@@ -242,11 +242,11 @@ function initializeAppAndAuth() {
     renderDataAnalysisTab();
     renderPersonalStatsTab();
     renderUserManagementTab();
-    ();
+    renderDetailedHistoryTabContainers();
     renderHeadToHeadTab();
     renderHistoryTab();
+    setupDetailedHistoryEventListeners(); // ★修正点：イベントリスナーの設定をここで行う
 }
-
 
 /**
  * Performance Refactor: Master update function.
@@ -257,10 +257,10 @@ function updateAllCalculationsAndViews() {
     updateLeaderboard();
     updateTrophyPage();
     updateHistoryTabFilters();
-    updateDetailedHistoryFilters(); // この行を追加
+    updateDetailedHistoryFilters(); 
     updateHistoryList();
-    updateDetailedHistoryTable('raw');
-    updateDetailedHistoryTable('pt');
+    updateDetailedHistoryTable('raw'); // ★修正点
+    updateDetailedHistoryTable('pt');  // ★修正点
     renderUserManagementList();
     renderPersonalStatsTab();
     updateHeadToHeadDropdowns();
@@ -486,6 +486,7 @@ function renderPersonalStatsTab() {
     `;
 }
 
+// ★修正点：onchange属性を削除
 function renderDetailedHistoryTabContainers() {
     const rawContainer = document.getElementById('history-raw-tab');
     const ptContainer = document.getElementById('history-pt-tab');
@@ -507,12 +508,9 @@ function renderDetailedHistoryTabContainers() {
     `;
     rawContainer.innerHTML = `<h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">詳細履歴 (素点)</h2>${filterHtml('raw')}<div id="history-raw-list" class="overflow-x-auto"></div>`;
     ptContainer.innerHTML = `<h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">詳細履歴 (PT)</h2>${filterHtml('pt')}<div id="history-pt-list" class="overflow-x-auto"></div>`;
-
-    // 新しく作成するイベントリスナー設定関数を呼び出す
-    setupDetailedHistoryEventListeners();
 }
 
-// 詳細履歴タブのフィルタにイベントリスナーを設定する関数
+// ★追加：イベントリスナーをここでまとめて設定する関数
 function setupDetailedHistoryEventListeners() {
     const prefixes = ['raw', 'pt'];
     prefixes.forEach(prefix => {
@@ -522,17 +520,12 @@ function setupDetailedHistoryEventListeners() {
 
         const handleChange = () => updateDetailedHistoryTable(prefix);
 
-        if (yearSelect) {
-            yearSelect.addEventListener('change', handleChange);
-        }
-        if (monthSelect) {
-            monthSelect.addEventListener('change', handleChange);
-        }
-        if (playerSelect) {
-            playerSelect.addEventListener('change', handleChange);
-        }
+        if (yearSelect) yearSelect.addEventListener('change', handleChange);
+        if (monthSelect) monthSelect.addEventListener('change', handleChange);
+        if (playerSelect) playerSelect.addEventListener('change', handleChange);
     });
 }
+
 
 function renderDataAnalysisTab() {
     const container = document.getElementById('data-analysis-tab');
@@ -803,6 +796,127 @@ function updateHistoryTabFilters() {
     }
 }
 
+// ★追加：詳細履歴のフィルタを更新・初期値設定する関数
+function updateDetailedHistoryFilters() {
+    const prefixes = ['raw', 'pt'];
+    const today = new Date();
+    const currentYearStr = today.getFullYear().toString();
+    const currentMonthStr = (today.getMonth() + 1).toString();
+
+    prefixes.forEach(prefix => {
+        const yearSelect = document.getElementById(`history-${prefix}-year-filter`);
+        const monthSelect = document.getElementById(`history-${prefix}-month-filter`);
+        const playerSelect = document.getElementById(`history-${prefix}-player-filter`);
+
+        if (!yearSelect || !monthSelect || !playerSelect) return;
+
+        const isInitialLoad = !yearSelect.value;
+
+        // フィルタの選択肢を生成
+        const yearOptions = getGameYears().map(year => `<option value="${year}">${year}年</option>`).join('');
+        const playerOptions = users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+        
+        const preservedYear = yearSelect.value;
+        const preservedMonth = monthSelect.value;
+        const preservedPlayer = playerSelect.value;
+
+        yearSelect.innerHTML = `<option value="all">すべて</option>${yearOptions}`;
+        playerSelect.innerHTML = `<option value="all">すべて</option>${playerOptions}`;
+
+        if (monthSelect.options.length <= 1) {
+            const monthOptions = Array.from({length: 12}, (_, i) => i + 1).map(m => `<option value="${m}">${m}月</option>`).join('');
+            monthSelect.innerHTML = `<option value="all">すべて</option>${monthOptions}`;
+        }
+
+        // 初期ロード時のみ、年月を当月・当年に設定
+        if (isInitialLoad) {
+            yearSelect.value = Array.from(yearSelect.options).some(opt => opt.value === currentYearStr) ? currentYearStr : 'all';
+            monthSelect.value = currentMonthStr;
+            playerSelect.value = 'all';
+        } else {
+            // ユーザーの選択を維持
+            yearSelect.value = preservedYear;
+            monthSelect.value = preservedMonth;
+            playerSelect.value = preservedPlayer;
+        }
+    });
+}
+
+
+window.updateHistoryList = () => {
+    const container = document.getElementById('history-list-container');
+    if (!container) return;
+
+    const yearFilter = document.getElementById('history-year-filter').value;
+    const monthFilter = document.getElementById('history-month-filter').value;
+    const playerFilter = document.getElementById('history-player-filter').value;
+
+    let filteredGames = [...games];
+
+    // Filter by year
+    if (yearFilter !== 'all') {
+        filteredGames = filteredGames.filter(game => {
+            const gameYear = (game.gameDate || '').substring(0, 4);
+            return gameYear === yearFilter;
+        });
+    }
+
+    // Filter by month
+    if (monthFilter !== 'all') {
+        filteredGames = filteredGames.filter(game => {
+            if (!game.gameDate) return false;
+            // Expected format: "YYYY/M/D..."
+            const parts = game.gameDate.split('/');
+            if (parts.length > 1) {
+                const gameMonth = parts[1];
+                return gameMonth === monthFilter;
+            }
+            return false;
+        });
+    }
+
+    // Filter by player
+    if (playerFilter !== 'all') {
+        filteredGames = filteredGames.filter(game => game.playerIds.includes(playerFilter));
+    }
+    
+    if (filteredGames.length === 0) {
+        container.innerHTML = `<p class="text-gray-500 text-center py-8">該当する対局履歴がありません。</p>`;
+        return;
+    }
+
+    container.innerHTML = filteredGames.map(game => {
+        const date = game.gameDate || new Date(game.createdAt.seconds * 1000).toLocaleString('ja-JP');
+        const winnerEntry = Object.entries(game.totalPoints).sort((a, b) => b[1] - a[1])[0];
+        const winnerId = winnerEntry[0];
+        const winnerUser = users.find(u => u.id === winnerId);
+        const photoHtml = getPlayerPhotoHtml(winnerId, 'w-8 h-8');
+
+        return `
+            <div class="bg-gray-900 p-4 rounded-lg border border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div class="cursor-pointer flex-grow" onclick="showGameDetails('${game.id}')">
+                    <p class="font-bold text-lg">${date}</p>
+                    <p class="text-sm text-gray-400">${game.playerNames.join(', ')}</p>
+                </div>
+                <div class="flex justify-between w-full sm:w-auto items-center">
+                    <div class="text-left sm:text-right mr-4 cursor-pointer flex items-center gap-2" onclick="showGameDetails('${game.id}')">
+                        ${photoHtml}
+                        <div>
+                            <p class="text-xs">WINNER</p>
+                            <p class="font-bold text-green-400">${winnerUser ? winnerUser.name : 'N/A'} (+${winnerEntry[1].toFixed(1)})</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="editGame('${game.id}')" class="text-blue-400 hover:text-blue-300 text-lg p-2 self-center"><i class="fas fa-edit"></i></button>
+                        <button onclick="confirmDeleteGame('${game.id}', '${date}')" class="text-red-500 hover:text-red-400 text-lg p-2 self-center"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+};
+
+// ★修正点：フィルタリングと表の描画を行う単一の関数
 function updateDetailedHistoryTable(prefix) {
     const listContainer = document.getElementById(`history-${prefix}-list`);
     const yearFilter = document.getElementById(`history-${prefix}-year-filter`).value;
@@ -903,182 +1017,6 @@ function updateDetailedHistoryTable(prefix) {
     listContainer.innerHTML = tableHtml;
 }
 
-window.updateHistoryList = () => {
-    const container = document.getElementById('history-list-container');
-    if (!container) return;
-
-    const yearFilter = document.getElementById('history-year-filter').value;
-    const monthFilter = document.getElementById('history-month-filter').value;
-    const playerFilter = document.getElementById('history-player-filter').value;
-
-    let filteredGames = [...games];
-
-    // Filter by year
-    if (yearFilter !== 'all') {
-        filteredGames = filteredGames.filter(game => {
-            const gameYear = (game.gameDate || '').substring(0, 4);
-            return gameYear === yearFilter;
-        });
-    }
-
-    // Filter by month
-    if (monthFilter !== 'all') {
-        filteredGames = filteredGames.filter(game => {
-            if (!game.gameDate) return false;
-            // Expected format: "YYYY/M/D..."
-            const parts = game.gameDate.split('/');
-            if (parts.length > 1) {
-                const gameMonth = parts[1];
-                return gameMonth === monthFilter;
-            }
-            return false;
-        });
-    }
-
-    // Filter by player
-    if (playerFilter !== 'all') {
-        filteredGames = filteredGames.filter(game => game.playerIds.includes(playerFilter));
-    }
-    
-    if (filteredGames.length === 0) {
-        container.innerHTML = `<p class="text-gray-500 text-center py-8">該当する対局履歴がありません。</p>`;
-        return;
-    }
-
-    container.innerHTML = filteredGames.map(game => {
-        const date = game.gameDate || new Date(game.createdAt.seconds * 1000).toLocaleString('ja-JP');
-        const winnerEntry = Object.entries(game.totalPoints).sort((a, b) => b[1] - a[1])[0];
-        const winnerId = winnerEntry[0];
-        const winnerUser = users.find(u => u.id === winnerId);
-        const photoHtml = getPlayerPhotoHtml(winnerId, 'w-8 h-8');
-
-        return `
-            <div class="bg-gray-900 p-4 rounded-lg border border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div class="cursor-pointer flex-grow" onclick="showGameDetails('${game.id}')">
-                    <p class="font-bold text-lg">${date}</p>
-                    <p class="text-sm text-gray-400">${game.playerNames.join(', ')}</p>
-                </div>
-                <div class="flex justify-between w-full sm:w-auto items-center">
-                    <div class="text-left sm:text-right mr-4 cursor-pointer flex items-center gap-2" onclick="showGameDetails('${game.id}')">
-                        ${photoHtml}
-                        <div>
-                            <p class="text-xs">WINNER</p>
-                            <p class="font-bold text-green-400">${winnerUser ? winnerUser.name : 'N/A'} (+${winnerEntry[1].toFixed(1)})</p>
-                        </div>
-                    </div>
-                    <div class="flex gap-2">
-                        <button onclick="editGame('${game.id}')" class="text-blue-400 hover:text-blue-300 text-lg p-2 self-center"><i class="fas fa-edit"></i></button>
-                        <button onclick="confirmDeleteGame('${game.id}', '${date}')" class="text-red-500 hover:text-red-400 text-lg p-2 self-center"><i class="fas fa-trash-alt"></i></button>
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
-};
-
-function renderDetailedHistoryTables() {
-    const rawListContainer = document.getElementById('history-raw-list');
-    const ptListContainer = document.getElementById('history-pt-list');
-    if (!rawListContainer || !ptListContainer) return;
-
-    const allHanchans = [];
-    games.forEach(game => {
-        game.scores.forEach((hanchan, index) => {
-            allHanchans.push({
-                date: game.gameDate || new Date(game.createdAt.seconds * 1000).toLocaleString('ja-JP'),
-                gameId: game.id,
-                hanchanNum: index + 1,
-                playerIds: game.playerIds,
-                rawScores: hanchan.rawScores,
-                points: hanchan.points
-            });
-        });
-    });
-
-    const createTable = (dataType, container, yearFilter, monthFilter, playerFilter) => {
-         let filteredHanchans = [...allHanchans];
-
-        if (yearFilter !== 'all') {
-            filteredHanchans = filteredHanchans.filter(h => (h.date || '').substring(0, 4) === yearFilter);
-        }
-        if (monthFilter !== 'all') {
-            filteredHanchans = filteredHanchans.filter(h => {
-                if (!h.date) return false;
-                const parts = h.date.split('/');
-                return parts.length > 1 && parts[1] === monthFilter;
-            });
-        }
-        if (playerFilter !== 'all') {
-            filteredHanchans = filteredHanchans.filter(h => h.playerIds.includes(playerFilter));
-        }
-
-        let tableHtml = `<table class="min-w-full divide-y divide-gray-700 font-m-gothic text-xs md:text-sm">
-            <thead class="bg-gray-900 text-xs md:text-sm font-medium text-gray-400 uppercase tracking-wider">
-                <tr>
-                    <th class="px-2 py-3 text-left whitespace-nowrap">日時</th>
-                    ${users.map(u => `<th class="px-2 py-3 text-right whitespace-nowrap">${u.name}</th>`).join('')}
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-700">`;
-        
-        if (filteredHanchans.length === 0) {
-            tableHtml += `<tr><td colspan="${users.length + 1}" class="text-center py-4 text-gray-500">NO DATA</td></tr>`;
-        } else {
-            let lastDate = null;
-            filteredHanchans.forEach(hanchan => {
-                const currentDate = hanchan.date.split('(')[0];
-                let borderClass = '';
-                if (lastDate && currentDate !== lastDate) {
-                    borderClass = 'border-t-2 border-gray-500';
-                }
-                lastDate = currentDate;
-
-                const scores = hanchan[dataType];
-                const scoreGroups = {};
-                Object.entries(hanchan.rawScores).forEach(([pId, score]) => {
-                    if (!scoreGroups[score]) scoreGroups[score] = [];
-                    scoreGroups[score].push(pId);
-                });
-                const sortedScores = Object.keys(scoreGroups).map(Number).sort((a, b) => b - a);
-                
-                const ranks = {};
-                let rankCursor = 1;
-                sortedScores.forEach(score => {
-                    const playersInGroup = scoreGroups[score];
-                    playersInGroup.forEach(pId => { ranks[pId] = rankCursor; });
-                    rankCursor += playersInGroup.length;
-                });
-                
-                tableHtml += `<tr class="${borderClass}"><td class="px-2 py-2 whitespace-nowrap">${hanchan.date} (#${hanchan.hanchanNum})</td>`;
-                users.forEach(user => {
-                    if (scores[user.id] !== undefined) {
-                        const rank = ranks[user.id];
-                        let rankClass = '';
-                        if (rank === 1) rankClass = 'text-rank-1';
-                        if (rank === 4) rankClass = 'text-rank-4';
-                        tableHtml += `<td class="px-2 py-2 text-right ${rankClass}">${dataType === 'points' ? scores[user.id].toFixed(1) : scores[user.id].toLocaleString()}</td>`;
-                    } else {
-                        tableHtml += `<td class="px-2 py-2 text-right text-gray-600">-</td>`;
-                    }
-                });
-                tableHtml += `</tr>`;
-            });
-        }
-
-        tableHtml += `</tbody></table>`;
-        container.innerHTML = tableHtml;
-    };
-    
-    const rawYear = document.getElementById('history-raw-year-filter').value;
-    const rawMonth = document.getElementById('history-raw-month-filter').value;
-    const rawPlayer = document.getElementById('history-raw-player-filter').value;
-    createTable('rawScores', rawListContainer, rawYear, rawMonth, rawPlayer);
-
-    const ptYear = document.getElementById('history-pt-year-filter').value;
-    const ptMonth = document.getElementById('history-pt-month-filter').value;
-    const ptPlayer = document.getElementById('history-pt-player-filter').value;
-    createTable('points', ptListContainer, ptYear, ptMonth, ptPlayer);
-}
 
 // --- Stats Page ---
 window.showPlayerStats = (playerId) => {
