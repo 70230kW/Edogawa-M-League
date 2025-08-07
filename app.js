@@ -610,7 +610,7 @@ function renderUserManagementList() {
                     <label for="photo-upload-${user.id}" class="cursor-pointer">
                         ${photoHtml}
                     </label>
-                    <input type="file" id="photo-upload-${user.id}" class="hidden" accept="image/*" onchange="handlePhotoUpload('${user.id}', this)">
+                    <input type="file" id="photo-upload-${user.id}" class="hidden" accept="image/*" onchange="openCropperModal(this.files[0], '${user.id}')">
                 </div>
                 <div class="flex-grow">
                     <input type="text" id="user-name-input-${user.id}" value="${user.name}" data-original-name="${user.name}" class="w-full bg-transparent rounded-md p-1 -m-1 focus:bg-gray-800 focus:ring-1 focus:ring-blue-500 outline-none" readonly>
@@ -1499,29 +1499,6 @@ window.addUser = async () => {
         nameInput.value = '';
         showModalMessage(`「${name}」さんを登録しました。`);
     } catch (error) { console.error("Error adding user: ", error); showModalMessage("ユーザーの追加に失敗しました。"); }
-};
-
-window.handlePhotoUpload = async (userId, inputElement) => {
-    const file = inputElement.files[0];
-    if (!file) return;
-
-    showLoadingModal("写真をアップロード中...");
-
-    const storageRef = ref(storage, `user-photos/${userId}/${file.name}`);
-
-    try {
-        const snapshot = await uploadBytes(storageRef, file);
-        const downloadURL = await getDownloadURL(snapshot.ref);
-
-        const userDocRef = doc(db, 'users', userId);
-        await updateDoc(userDocRef, { photoURL: downloadURL });
-        
-        closeModal();
-
-    } catch (error) {
-        console.error("Photo upload failed:", error);
-        showModalMessage("写真のアップロードに失敗しました。");
-    }
 };
 
 async function executeUserNameUpdate(userId, newName) {
@@ -2992,3 +2969,81 @@ function checkAllTrophies(targetGames, currentStats) {
 
 // --- Initial Execution ---
 initializeAppAndAuth();
+// ★★★★★ 既存の handlePhotoUpload 関数を削除し、以下のコードに置き換える ★★★★★
+
+/**
+ * 画像トリミング用のモーダルを開く関数
+ * @param {File} file - ユーザーが選択した画像ファイル
+ * @param {string} userId - 写真を登録するユーザーのID
+ */
+function openCropperModal(file, userId) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const modalContent = `
+            <h3 class="cyber-header text-xl font-bold text-yellow-300 mb-4">写真のトリミング</h3>
+            <div class="max-w-full max-h-[60vh] mb-4">
+                <img id="cropper-image" src="${e.target.result}" style="max-height: 60vh;">
+            </div>
+            <div class="flex justify-end gap-4 mt-6">
+                <button onclick="closeModal()" class="cyber-btn px-4 py-2">キャンセル</button>
+                <button id="crop-and-upload-btn" class="cyber-btn-green px-4 py-2">トリミングして保存</button>
+            </div>
+        `;
+        showModal(modalContent);
+
+        const image = document.getElementById('cropper-image');
+        const cropper = new Cropper(image, {
+            aspectRatio: 1,
+            viewMode: 1,
+            dragMode: 'move',
+            background: false,
+            autoCropArea: 0.8,
+            cropBoxMovable: false,
+            cropBoxResizable: false,
+        });
+
+        document.getElementById('crop-and-upload-btn').addEventListener('click', () => {
+            // 256x256ピクセルにリサイズして品質を調整
+            const canvas = cropper.getCroppedCanvas({
+                width: 256,
+                height: 256,
+                imageSmoothingQuality: 'high',
+            });
+            
+            // CanvasからBlobオブジェクトを取得 (WEBP形式で画質を最適化)
+            canvas.toBlob((blob) => {
+                handlePhotoUpload(userId, blob);
+            }, 'image/webp', 0.8); // 80%の品質
+        });
+    };
+    reader.readAsDataURL(file);
+}
+
+/**
+ * トリミング・リサイズされた画像をFirebase Storageにアップロードする関数
+ * @param {string} userId - 写真を登録するユーザーのID
+ * @param {Blob} blob - トリミング・リサイズ済みの画像データ
+ */
+window.handlePhotoUpload = async (userId, blob) => {
+    if (!blob) return;
+
+    showLoadingModal("写真をアップロード中...");
+
+    // ファイル名を固定することで、古い写真を上書きする
+    const storageRef = ref(storage, `user-photos/${userId}/profile.webp`);
+
+    try {
+        const snapshot = await uploadBytes(storageRef, blob);
+        const downloadURL = await getDownloadURL(snapshot.ref);
+
+        const userDocRef = doc(db, 'users', userId);
+        await updateDoc(userDocRef, { photoURL: downloadURL });
+        
+        closeModal();
+        showModalMessage("写真が更新されました！");
+
+    } catch (error) {
+        console.error("Photo upload failed:", error);
+        showModalMessage("写真のアップロードに失敗しました。");
+    }
+};
