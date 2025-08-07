@@ -2976,10 +2976,31 @@ initializeAppAndAuth();
  * @param {File} file - ユーザーが選択した画像ファイル
  * @param {string} userId - 写真を登録するユーザーのID
  */
+/**
+ * 画像トリミング用のモーダルを開く関数
+ * @param {File} file - ユーザーが選択した画像ファイル
+ * @param {string} userId - 写真を登録するユーザーのID
+ */
 function openCropperModal(file, userId) {
+    if (!file) return;
+
+    // 1. まず、すぐにモーダルを開き、読み込み中のメッセージを表示する
+    const initialModalContent = `
+        <h3 class="cyber-header text-xl font-bold text-yellow-300 mb-4">画像を準備中...</h3>
+        <div class="flex justify-center items-center h-48">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
+        </div>
+        <div class="flex justify-end gap-4 mt-6">
+            <button onclick="closeModal()" class="cyber-btn px-4 py-2">キャンセル</button>
+        </div>
+    `;
+    showModal(initialModalContent);
+
+    // 2. 裏側で画像の読み込みを開始する
     const reader = new FileReader();
     reader.onload = (e) => {
-        const modalContent = `
+        // 3. 画像が読み込めたら、モーダルの内容をトリミング画面に差し替える
+        const cropperModalContent = `
             <h3 class="cyber-header text-xl font-bold text-yellow-300 mb-4">写真のトリミング</h3>
             <div class="max-w-full max-h-[60vh] mb-4">
                 <img id="cropper-image" src="${e.target.result}" style="max-height: 60vh;">
@@ -2989,8 +3010,9 @@ function openCropperModal(file, userId) {
                 <button id="crop-and-upload-btn" class="cyber-btn-green px-4 py-2">トリミングして保存</button>
             </div>
         `;
-        showModal(modalContent);
+        document.getElementById('modal-content').innerHTML = cropperModalContent;
 
+        // 4. Cropper.js を初期化する
         const image = document.getElementById('cropper-image');
         const cropper = new Cropper(image, {
             aspectRatio: 1,
@@ -3002,18 +3024,18 @@ function openCropperModal(file, userId) {
             cropBoxResizable: false,
         });
 
+        // 5. 「トリミングして保存」ボタンの処理を設定する
         document.getElementById('crop-and-upload-btn').addEventListener('click', () => {
-            // 256x256ピクセルにリサイズして品質を調整
             const canvas = cropper.getCroppedCanvas({
                 width: 256,
                 height: 256,
                 imageSmoothingQuality: 'high',
             });
             
-            // CanvasからBlobオブジェクトを取得 (WEBP形式で画質を最適化)
             canvas.toBlob((blob) => {
+                // handlePhotoUploadは変更なし
                 handlePhotoUpload(userId, blob);
-            }, 'image/webp', 0.8); // 80%の品質
+            }, 'image/webp', 0.8);
         });
     };
     reader.readAsDataURL(file);
