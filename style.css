@@ -178,3 +178,14 @@ input:disabled, select:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
+/* style.css の末尾に追加 */
+
+/* Cropper.js用のスタイル */
+.cropper-container img {
+    max-width: 100%;
+}
+
+.cropper-view-box,
+.cropper-face {
+  border-radius: 50%;
+}
