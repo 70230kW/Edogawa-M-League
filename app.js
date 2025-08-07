@@ -610,7 +610,7 @@ function renderUserManagementList() {
                     <label for="photo-upload-${user.id}" class="cursor-pointer">
                         ${photoHtml}
                     </label>
-                    <input type="file" id="photo-upload-${user.id}" class="hidden" accept="image/*" onchange="openCropperModal(this.files[0], '${user.id}')">
+                    <input type="file" id="photo-upload-${user.id}" class="hidden" accept="image/*" onchange="initiatePhotoUpload(event, '${user.id}')">
                 </div>
                 <div class="flex-grow">
                     <input type="text" id="user-name-input-${user.id}" value="${user.name}" data-original-name="${user.name}" class="w-full bg-transparent rounded-md p-1 -m-1 focus:bg-gray-800 focus:ring-1 focus:ring-blue-500 outline-none" readonly>
@@ -2969,95 +2969,90 @@ function checkAllTrophies(targetGames, currentStats) {
 
 // --- Initial Execution ---
 initializeAppAndAuth();
-// ★★★★★ 既存の handlePhotoUpload 関数を削除し、以下のコードに置き換える ★★★★★
+
+// ★★★★★ 削除した場所に、以下の3つの関数を貼り付ける ★★★★★
+
+// グローバルスコープでcropperインスタンスを管理
+let cropper = null;
 
 /**
- * 画像トリミング用のモーダルを開く関数
- * @param {File} file - ユーザーが選択した画像ファイル
- * @param {string} userId - 写真を登録するユーザーのID
+ * 写真ファイルが選択されたときに呼ばれるメインの関数
+ * @param {Event} event - ファイル選択のイベント
+ * @param {string} userId - 対象のユーザーID
  */
-/**
- * 画像トリミング用のモーダルを開く関数
- * @param {File} file - ユーザーが選択した画像ファイル
- * @param {string} userId - 写真を登録するユーザーのID
- */
-function openCropperModal(file, userId) {
+window.initiatePhotoUpload = (event, userId) => {
+    const file = event.target.files[0];
     if (!file) return;
 
-    // 1. まず、すぐにモーダルを開き、読み込み中のメッセージを表示する
-    const initialModalContent = `
-        <h3 class="cyber-header text-xl font-bold text-yellow-300 mb-4">画像を準備中...</h3>
-        <div class="flex justify-center items-center h-48">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
-        </div>
-        <div class="flex justify-end gap-4 mt-6">
-            <button onclick="closeModal()" class="cyber-btn px-4 py-2">キャンセル</button>
-        </div>
-    `;
-    showModal(initialModalContent);
+    const image = document.getElementById('cropper-image-container');
+    const cropperModal = document.getElementById('cropper-modal');
+    const uploadBtn = document.getElementById('crop-and-upload-btn');
+    const cancelBtn = document.getElementById('cropper-cancel-btn');
 
-    // 2. 裏側で画像の読み込みを開始する
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        // 3. 画像が読み込めたら、モーダルの内容をトリミング画面に差し替える
-        const cropperModalContent = `
-            <h3 class="cyber-header text-xl font-bold text-yellow-300 mb-4">写真のトリミング</h3>
-            <div class="max-w-full max-h-[60vh] mb-4">
-                <img id="cropper-image" src="${e.target.result}" style="max-height: 60vh;">
-            </div>
-            <div class="flex justify-end gap-4 mt-6">
-                <button onclick="closeModal()" class="cyber-btn px-4 py-2">キャンセル</button>
-                <button id="crop-and-upload-btn" class="cyber-btn-green px-4 py-2">トリミングして保存</button>
-            </div>
-        `;
-        document.getElementById('modal-content').innerHTML = cropperModalContent;
+    // 古いcropperインスタンスが残っていたら破棄
+    if (cropper) {
+        cropper.destroy();
+    }
+    
+    // 画像の一次URLを生成し、モーダルを表示
+    const imageUrl = URL.createObjectURL(file);
+    image.src = imageUrl;
+    cropperModal.classList.remove('hidden');
 
-        // 4. Cropper.js を初期化する
-        const image = document.getElementById('cropper-image');
-        const cropper = new Cropper(image, {
-            aspectRatio: 1,
-            viewMode: 1,
-            dragMode: 'move',
-            background: false,
-            autoCropArea: 0.8,
-            cropBoxMovable: false,
-            cropBoxResizable: false,
-        });
+    // Cropper.jsを初期化
+    cropper = new Cropper(image, {
+        aspectRatio: 1,
+        viewMode: 1,
+        dragMode: 'move',
+        background: false,
+        autoCropArea: 0.9,
+        cropBoxMovable: false,
+        cropBoxResizable: false,
+    });
 
-        // 5. 「トリミングして保存」ボタンの処理を設定する
-        document.getElementById('crop-and-upload-btn').addEventListener('click', () => {
-            const canvas = cropper.getCroppedCanvas({
-                width: 256,
-                height: 256,
-                imageSmoothingQuality: 'high',
-            });
+    // 「トリミングして保存」ボタンのクリック処理
+    uploadBtn.onclick = () => {
+        cropper.getCroppedCanvas({
+            width: 256,
+            height: 256,
+            imageSmoothingQuality: 'high',
+        }).toBlob((blob) => {
+            handlePhotoUpload(userId, blob); // アップロード処理を呼び出す
             
-            canvas.toBlob((blob) => {
-                // handlePhotoUploadは変更なし
-                handlePhotoUpload(userId, blob);
-            }, 'image/webp', 0.8);
-        });
+            // 後片付け
+            cropperModal.classList.add('hidden');
+            cropper.destroy();
+            cropper = null;
+            URL.revokeObjectURL(imageUrl); // メモリ解放
+        }, 'image/webp', 0.85); // 高画質(85%)のwebp形式に変換
     };
-    reader.readAsDataURL(file);
-}
+
+    // 「キャンセル」ボタンのクリック処理
+    cancelBtn.onclick = () => {
+        // 後片付け
+        cropperModal.classList.add('hidden');
+        cropper.destroy();
+        cropper = null;
+        URL.revokeObjectURL(imageUrl); // メモリ解放
+    };
+};
 
 /**
- * トリミング・リサイズされた画像をFirebase Storageにアップロードする関数
- * @param {string} userId - 写真を登録するユーザーのID
- * @param {Blob} blob - トリミング・リサイズ済みの画像データ
+ * トリミングされた画像をFirebaseにアップロードする関数
+ * @param {string} userId - 対象のユーザーID
+ * @param {Blob} blob - トリミング済みの画像データ
  */
-window.handlePhotoUpload = async (userId, blob) => {
+async function handlePhotoUpload(userId, blob) {
     if (!blob) return;
 
     showLoadingModal("写真をアップロード中...");
 
-    // ファイル名を固定することで、古い写真を上書きする
     const storageRef = ref(storage, `user-photos/${userId}/profile.webp`);
 
     try {
-        const snapshot = await uploadBytes(storageRef, blob);
-        const downloadURL = await getDownloadURL(snapshot.ref);
-
+        await uploadBytes(storageRef, blob);
+        const downloadURL = await getDownloadURL(storageRef);
+        
         const userDocRef = doc(db, 'users', userId);
         await updateDoc(userDocRef, { photoURL: downloadURL });
         
@@ -3066,6 +3061,7 @@ window.handlePhotoUpload = async (userId, blob) => {
 
     } catch (error) {
         console.error("Photo upload failed:", error);
+        closeModal();
         showModalMessage("写真のアップロードに失敗しました。");
     }
-};
+}
