@@ -259,7 +259,8 @@ function updateAllCalculationsAndViews() {
     updateHistoryTabFilters();
     updateDetailedHistoryFilters(); // この行を追加
     updateHistoryList();
-    renderDetailedHistoryTables();
+    updateDetailedHistoryTable('raw');
+    updateDetailedHistoryTable('pt');
     renderUserManagementList();
     renderPersonalStatsTab();
     updateHeadToHeadDropdowns();
@@ -492,15 +493,15 @@ function renderDetailedHistoryTabContainers() {
         <div class="flex flex-col sm:flex-row gap-4 mb-4 p-4 bg-gray-900 rounded-lg">
             <div class="flex-1">
                 <label for="history-${prefix}-year-filter" class="block text-sm font-medium text-gray-400">年</label>
-                <select id="history-${prefix}-year-filter" onchange="renderDetailedHistoryTables()" class="mt-1 block w-full rounded-md"></select>
+                <select id="history-${prefix}-year-filter" onchange="updateDetailedHistoryTable('${prefix}')" class="mt-1 block w-full rounded-md"></select>
             </div>
             <div class="flex-1">
                 <label for="history-${prefix}-month-filter" class="block text-sm font-medium text-gray-400">月</label>
-                <select id="history-${prefix}-month-filter" onchange="renderDetailedHistoryTables()" class="mt-1 block w-full rounded-md"></select>
+                <select id="history-${prefix}-month-filter" onchange="updateDetailedHistoryTable('${prefix}')" class="mt-1 block w-full rounded-md"></select>
             </div>
             <div class="flex-1">
                 <label for="history-${prefix}-player-filter" class="block text-sm font-medium text-gray-400">雀士</label>
-                <select id="history-${prefix}-player-filter" onchange="renderDetailedHistoryTables()" class="mt-1 block w-full rounded-md"></select>
+                <select id="history-${prefix}-player-filter" onchange="updateDetailedHistoryTable('${prefix}')" class="mt-1 block w-full rounded-md"></select>
             </div>
         </div>
     `;
@@ -777,64 +778,104 @@ function updateHistoryTabFilters() {
     }
 }
 
-// 詳細履歴タブのフィルタ選択肢を更新する関数
-function updateDetailedHistoryFilters() {
-    const prefixes = ['raw', 'pt'];
-    const today = new Date();
-    const currentYearStr = today.getFullYear().toString();
-    const currentMonthStr = (today.getMonth() + 1).toString();
+function updateDetailedHistoryTable(prefix) {
+    const listContainer = document.getElementById(`history-${prefix}-list`);
+    const yearFilter = document.getElementById(`history-${prefix}-year-filter`).value;
+    const monthFilter = document.getElementById(`history-${prefix}-month-filter`).value;
+    const playerFilter = document.getElementById(`history-${prefix}-player-filter`).value;
 
-    prefixes.forEach(prefix => {
-        const yearSelect = document.getElementById(`history-${prefix}-year-filter`);
-        const monthSelect = document.getElementById(`history-${prefix}-month-filter`);
-        const playerSelect = document.getElementById(`history-${prefix}-player-filter`);
+    if (!listContainer) return;
 
-        if (!yearSelect || !monthSelect || !playerSelect) return;
-
-        // フィルタを再生成する前に、現在の選択値を取得
-        const previouslySelectedYear = yearSelect.value;
-        const previouslySelectedMonth = monthSelect.value;
-        const previouslySelectedPlayer = playerSelect.value;
-
-        // フィルタの選択肢を生成
-        const yearOptions = getGameYears().map(year => `<option value="${year}">${year}年</option>`).join('');
-        yearSelect.innerHTML = `<option value="all">すべて</option>${yearOptions}`;
-
-        // 月フィルタは初回のみ生成
-        if (monthSelect.options.length <= 1) {
-            const monthOptions = Array.from({length: 12}, (_, i) => i + 1).map(m => `<option value="${m}">${m}月</option>`).join('');
-            monthSelect.innerHTML = `<option value="all">すべて</option>${monthOptions}`;
-        }
-        
-        const playerOptions = users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
-        playerSelect.innerHTML = `<option value="all">すべて</option>${playerOptions}`;
-
-        // --- 初期値の設定 ---
-        // 年フィルタ：ユーザーがまだ何も選択していなければ、当年を初期値にする
-        if (previouslySelectedYear === 'all' || !previouslySelectedYear) {
-            if (Array.from(yearSelect.options).some(opt => opt.value === currentYearStr)) {
-                yearSelect.value = currentYearStr;
-            } else {
-                yearSelect.value = 'all'; // 該当年がなければ「すべて」にする
-            }
-        } else {
-            yearSelect.value = previouslySelectedYear; // ユーザーの選択を維持
-        }
-
-        // 月フィルタ：ユーザーがまだ何も選択していなければ、当月を初期値にする
-        if (previouslySelectedMonth === 'all' || !previouslySelectedMonth) {
-            monthSelect.value = currentMonthStr;
-        } else {
-            monthSelect.value = previouslySelectedMonth; // ユーザーの選択を維持
-        }
-
-        // 雀士フィルタ：常に「すべて」を初期値とするか、ユーザーの選択を維持
-        if (previouslySelectedPlayer) {
-            playerSelect.value = previouslySelectedPlayer;
-        } else {
-             playerSelect.value = 'all';
-        }
+    // 全ての半荘データを準備
+    const allHanchans = [];
+    games.forEach(game => {
+        if (!game.scores) return;
+        game.scores.forEach((hanchan, index) => {
+            allHanchans.push({
+                date: game.gameDate || new Date(game.createdAt.seconds * 1000).toLocaleString('ja-JP'),
+                hanchanNum: index + 1,
+                playerIds: game.playerIds,
+                rawScores: hanchan.rawScores,
+                points: hanchan.points
+            });
+        });
     });
+
+    // 選択されたフィルタで半荘データを絞り込み
+    let filteredHanchans = [...allHanchans];
+    if (yearFilter !== 'all') {
+        filteredHanchans = filteredHanchans.filter(h => (h.date || '').substring(0, 4) === yearFilter);
+    }
+    if (monthFilter !== 'all') {
+        filteredHanchans = filteredHanchans.filter(h => {
+            if (!h.date) return false;
+            const parts = h.date.split('/');
+            return parts.length > 1 && parts[1] === monthFilter;
+        });
+    }
+    if (playerFilter !== 'all') {
+        filteredHanchans = filteredHanchans.filter(h => h.playerIds.includes(playerFilter));
+    }
+
+    // 絞り込んだデータでテーブルのHTMLを生成
+    const dataType = prefix === 'raw' ? 'rawScores' : 'points';
+    let tableHtml = `<table class="min-w-full divide-y divide-gray-700 font-m-gothic text-xs md:text-sm">
+        <thead class="bg-gray-900 text-xs md:text-sm font-medium text-gray-400 uppercase tracking-wider">
+            <tr>
+                <th class="px-2 py-3 text-left whitespace-nowrap">日時</th>
+                ${users.map(u => `<th class="px-2 py-3 text-right whitespace-nowrap">${u.name}</th>`).join('')}
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-700">`;
+
+    if (filteredHanchans.length === 0) {
+        tableHtml += `<tr><td colspan="${users.length + 1}" class="text-center py-4 text-gray-500">該当する履歴がありません</td></tr>`;
+    } else {
+        let lastDate = null;
+        filteredHanchans.forEach(hanchan => {
+            const currentDate = hanchan.date.split('(')[0];
+            let borderClass = '';
+            if (lastDate && currentDate !== lastDate) {
+                borderClass = 'border-t-2 border-gray-500';
+            }
+            lastDate = currentDate;
+
+            const scores = hanchan[dataType];
+            if (!scores) return; // スコアデータがない場合はスキップ
+
+            const scoreGroups = {};
+            Object.entries(hanchan.rawScores).forEach(([pId, score]) => {
+                if (!scoreGroups[score]) scoreGroups[score] = [];
+                scoreGroups[score].push(pId);
+            });
+            const sortedScores = Object.keys(scoreGroups).map(Number).sort((a, b) => b - a);
+
+            const ranks = {};
+            let rankCursor = 1;
+            sortedScores.forEach(score => {
+                const playersInGroup = scoreGroups[score];
+                playersInGroup.forEach(pId => { ranks[pId] = rankCursor; });
+                rankCursor += playersInGroup.length;
+            });
+
+            tableHtml += `<tr class="${borderClass}"><td class="px-2 py-2 whitespace-nowrap">${hanchan.date} (#${hanchan.hanchanNum})</td>`;
+            users.forEach(user => {
+                if (scores[user.id] !== undefined) {
+                    const rank = ranks[user.id];
+                    let rankClass = '';
+                    if (rank === 1) rankClass = 'text-rank-1';
+                    if (rank === 4) rankClass = 'text-rank-4';
+                    tableHtml += `<td class="px-2 py-2 text-right ${rankClass}">${dataType === 'points' ? scores[user.id].toFixed(1) : scores[user.id].toLocaleString()}</td>`;
+                } else {
+                    tableHtml += `<td class="px-2 py-2 text-right text-gray-600">-</td>`;
+                }
+            });
+            tableHtml += `</tr>`;
+        });
+    }
+
+    tableHtml += `</tbody></table>`;
+    listContainer.innerHTML = tableHtml;
 }
 
 window.updateHistoryList = () => {
