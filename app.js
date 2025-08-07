@@ -597,20 +597,23 @@ function renderPlayerSelection() {
     });
 }
 
+// ★★★★★ 既存の renderUserManagementList 関数をまるごと置き換える ★★★★★
+
 function renderUserManagementList() {
     const container = document.getElementById('user-list-management');
     if (!container) return;
-    container.innerHTML = users.length === 0 
+
+    // ファイル選択用のinputは一つだけ用意し、非表示にする
+    const userListHtml = users.length === 0
         ? `<p class="text-gray-500">登録されている雀士がいません。</p>`
         : users.map(user => {
             const photoHtml = getPlayerPhotoHtml(user.id, 'w-12 h-12');
             return `
             <div class="flex items-center gap-4 bg-gray-900 p-2 rounded-lg">
                 <div class="relative flex-shrink-0">
-                    <label for="photo-upload-${user.id}" class="cursor-pointer">
+                    <div class="cursor-pointer" onclick="triggerPhotoUpload('${user.id}')">
                         ${photoHtml}
-                    </label>
-                    <input type="file" id="photo-upload-${user.id}" class="hidden" accept="image/*" onchange="initiatePhotoUpload(event, '${user.id}')">
+                    </div>
                 </div>
                 <div class="flex-grow">
                     <input type="text" id="user-name-input-${user.id}" value="${user.name}" data-original-name="${user.name}" class="w-full bg-transparent rounded-md p-1 -m-1 focus:bg-gray-800 focus:ring-1 focus:ring-blue-500 outline-none" readonly>
@@ -621,6 +624,11 @@ function renderUserManagementList() {
                 </div>
             </div>
         `}).join('');
+    
+    container.innerHTML = `
+        <input type="file" id="photo-upload-input" class="hidden" accept="image/*" onchange="onFileSelected(event)">
+        ${userListHtml}
+    `;
 }
 
 window.updateLeaderboard = () => {
@@ -2970,37 +2978,61 @@ function checkAllTrophies(targetGames, currentStats) {
 // --- Initial Execution ---
 initializeAppAndAuth();
 
-// ★★★★★ 削除した場所に、以下の3つの関数を貼り付ける ★★★★★
+// ★★★★★ 削除した場所に、以下のコードをまるごと貼り付ける ★★★★★
 
-// グローバルスコープでcropperインスタンスを管理
-let cropper = null;
+let cropperInstance = null;
+let currentUserId = null;
 
 /**
- * 写真ファイルが選択されたときに呼ばれるメインの関数
- * @param {Event} event - ファイル選択のイベント
- * @param {string} userId - 対象のユーザーID
+ * ファイル選択のダイアログを開くトリガーとなる関数
+ * @param {string} userId - 対象ユーザーのID
  */
-window.initiatePhotoUpload = (event, userId) => {
+window.triggerPhotoUpload = (userId) => {
+    currentUserId = userId;
+    document.getElementById(`photo-upload-input`).click();
+};
+
+/**
+ * ファイルが選択された直後に呼ばれる関数
+ * @param {Event} event - ファイル選択イベント
+ */
+window.onFileSelected = (event) => {
     const file = event.target.files[0];
-    if (!file) return;
+    if (!file || !currentUserId) return;
 
-    const image = document.getElementById('cropper-image-container');
-    const cropperModal = document.getElementById('cropper-modal');
-    const uploadBtn = document.getElementById('crop-and-upload-btn');
-    const cancelBtn = document.getElementById('cropper-cancel-btn');
+    // 画像読み込みとトリミング画面の表示
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        showCropper(e.target.result);
+    };
+    reader.readAsDataURL(file);
 
-    // 古いcropperインスタンスが残っていたら破棄
-    if (cropper) {
-        cropper.destroy();
+    // 同じファイルを再度選択してもイベントが発火するように値をリセット
+    event.target.value = '';
+};
+
+/**
+ * トリミング画面（モーダル）を表示し、Cropper.jsを初期化する
+ * @param {string} imageSrc - base64エンコードされた画像データ
+ */
+function showCropper(imageSrc) {
+    const modalContent = `
+        <h3 class="cyber-header text-xl font-bold text-yellow-300 mb-4">写真のトリミング</h3>
+        <div class="max-w-full max-h-[60vh] mb-4 bg-gray-900">
+            <img id="cropper-image" src="${imageSrc}" alt="トリミング対象">
+        </div>
+        <div class="flex justify-end gap-4 mt-6">
+            <button onclick="cancelCrop()" class="cyber-btn px-4 py-2">キャンセル</button>
+            <button onclick="performCropAndUpload()" class="cyber-btn-green px-4 py-2">トリミングして保存</button>
+        </div>
+    `;
+    showModal(modalContent);
+
+    const image = document.getElementById('cropper-image');
+    if (cropperInstance) {
+        cropperInstance.destroy();
     }
-    
-    // 画像の一次URLを生成し、モーダルを表示
-    const imageUrl = URL.createObjectURL(file);
-    image.src = imageUrl;
-    cropperModal.classList.remove('hidden');
-
-    // Cropper.jsを初期化
-    cropper = new Cropper(image, {
+    cropperInstance = new Cropper(image, {
         aspectRatio: 1,
         viewMode: 1,
         dragMode: 'move',
@@ -3009,59 +3041,55 @@ window.initiatePhotoUpload = (event, userId) => {
         cropBoxMovable: false,
         cropBoxResizable: false,
     });
+}
 
-    // 「トリミングして保存」ボタンのクリック処理
-    uploadBtn.onclick = () => {
-        cropper.getCroppedCanvas({
-            width: 256,
-            height: 256,
-            imageSmoothingQuality: 'high',
-        }).toBlob((blob) => {
-            handlePhotoUpload(userId, blob); // アップロード処理を呼び出す
+/**
+ * トリミングを実行し、アップロード処理を呼び出す
+ */
+window.performCropAndUpload = () => {
+    if (!cropperInstance || !currentUserId) return;
+
+    cropperInstance.getCroppedCanvas({
+        width: 256,
+        height: 256,
+        imageSmoothingQuality: 'high',
+    }).toBlob(async (blob) => {
+        if (!blob) {
+            showModalMessage("トリミングに失敗しました。");
+            return;
+        }
+        
+        showLoadingModal("写真をアップロード中...");
+
+        try {
+            const storageRef = ref(storage, `user-photos/${currentUserId}/profile.webp`);
+            await uploadBytes(storageRef, blob);
+            const downloadURL = await getDownloadURL(storageRef);
             
-            // 後片付け
-            cropperModal.classList.add('hidden');
-            cropper.destroy();
-            cropper = null;
-            URL.revokeObjectURL(imageUrl); // メモリ解放
-        }, 'image/webp', 0.85); // 高画質(85%)のwebp形式に変換
-    };
+            const userDocRef = doc(db, 'users', currentUserId);
+            await updateDoc(userDocRef, { photoURL: downloadURL });
+            
+            closeModal();
+            showModalMessage("写真が更新されました！");
 
-    // 「キャンセル」ボタンのクリック処理
-    cancelBtn.onclick = () => {
-        // 後片付け
-        cropperModal.classList.add('hidden');
-        cropper.destroy();
-        cropper = null;
-        URL.revokeObjectURL(imageUrl); // メモリ解放
-    };
+        } catch (error) {
+            console.error("Photo upload failed:", error);
+            closeModal();
+            showModalMessage("写真のアップロードに失敗しました。");
+        } finally {
+            cancelCrop(); // 後片付け
+        }
+    }, 'image/webp', 0.85);
 };
 
 /**
- * トリミングされた画像をFirebaseにアップロードする関数
- * @param {string} userId - 対象のユーザーID
- * @param {Blob} blob - トリミング済みの画像データ
+ * トリミングをキャンセルし、リソースを解放する
  */
-async function handlePhotoUpload(userId, blob) {
-    if (!blob) return;
-
-    showLoadingModal("写真をアップロード中...");
-
-    const storageRef = ref(storage, `user-photos/${userId}/profile.webp`);
-
-    try {
-        await uploadBytes(storageRef, blob);
-        const downloadURL = await getDownloadURL(storageRef);
-        
-        const userDocRef = doc(db, 'users', userId);
-        await updateDoc(userDocRef, { photoURL: downloadURL });
-        
-        closeModal();
-        showModalMessage("写真が更新されました！");
-
-    } catch (error) {
-        console.error("Photo upload failed:", error);
-        closeModal();
-        showModalMessage("写真のアップロードに失敗しました。");
+window.cancelCrop = () => {
+    if (cropperInstance) {
+        cropperInstance.destroy();
+        cropperInstance = null;
     }
-}
+    currentUserId = null;
+    closeModal();
+};
