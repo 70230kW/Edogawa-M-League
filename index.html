@@ -59,6 +59,18 @@
     <div id="modal" class="fixed inset-0 z-50 flex items-center justify-center hidden modal-backdrop">
         <div id="modal-content" class="cyber-card p-4 sm:p-6 rounded-lg w-11/12 max-w-4xl max-h-[90vh] overflow-y-auto"></div>
     </div>
+    <div id="cropper-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden modal-backdrop">
+        <div class="cyber-card p-4 sm:p-6 rounded-lg w-11/12 max-w-lg">
+             <h3 class="cyber-header text-xl font-bold text-yellow-300 mb-4">写真のトリミング</h3>
+             <div class="max-w-full max-h-[60vh] mb-4 bg-gray-900">
+                 <img id="cropper-image-container" src="" alt="トリミング対象の画像">
+             </div>
+             <div class="flex justify-end gap-4 mt-6">
+                 <button id="cropper-cancel-btn" class="cyber-btn px-4 py-2">キャンセル</button>
+                 <button id="crop-and-upload-btn" class="cyber-btn-green px-4 py-2">トリミングして保存</button>
+             </div>
+        </div>
+    </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
     <script type="module" src="app.js"></script>
 
