@@ -242,7 +242,7 @@ function initializeAppAndAuth() {
     renderDataAnalysisTab();
     renderPersonalStatsTab();
     renderUserManagementTab();
-    renderDetailedHistoryTabContainers();
+    ();
     renderHeadToHeadTab();
     renderHistoryTab();
 }
@@ -493,20 +493,45 @@ function renderDetailedHistoryTabContainers() {
         <div class="flex flex-col sm:flex-row gap-4 mb-4 p-4 bg-gray-900 rounded-lg">
             <div class="flex-1">
                 <label for="history-${prefix}-year-filter" class="block text-sm font-medium text-gray-400">年</label>
-                <select id="history-${prefix}-year-filter" onchange="updateDetailedHistoryTable('${prefix}')" class="mt-1 block w-full rounded-md"></select>
+                <select id="history-${prefix}-year-filter" class="mt-1 block w-full rounded-md"></select>
             </div>
             <div class="flex-1">
                 <label for="history-${prefix}-month-filter" class="block text-sm font-medium text-gray-400">月</label>
-                <select id="history-${prefix}-month-filter" onchange="updateDetailedHistoryTable('${prefix}')" class="mt-1 block w-full rounded-md"></select>
+                <select id="history-${prefix}-month-filter" class="mt-1 block w-full rounded-md"></select>
             </div>
             <div class="flex-1">
                 <label for="history-${prefix}-player-filter" class="block text-sm font-medium text-gray-400">雀士</label>
-                <select id="history-${prefix}-player-filter" onchange="updateDetailedHistoryTable('${prefix}')" class="mt-1 block w-full rounded-md"></select>
+                <select id="history-${prefix}-player-filter" class="mt-1 block w-full rounded-md"></select>
             </div>
         </div>
     `;
     rawContainer.innerHTML = `<h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">詳細履歴 (素点)</h2>${filterHtml('raw')}<div id="history-raw-list" class="overflow-x-auto"></div>`;
     ptContainer.innerHTML = `<h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">詳細履歴 (PT)</h2>${filterHtml('pt')}<div id="history-pt-list" class="overflow-x-auto"></div>`;
+
+    // 新しく作成するイベントリスナー設定関数を呼び出す
+    setupDetailedHistoryEventListeners();
+}
+
+// 詳細履歴タブのフィルタにイベントリスナーを設定する関数
+function setupDetailedHistoryEventListeners() {
+    const prefixes = ['raw', 'pt'];
+    prefixes.forEach(prefix => {
+        const yearSelect = document.getElementById(`history-${prefix}-year-filter`);
+        const monthSelect = document.getElementById(`history-${prefix}-month-filter`);
+        const playerSelect = document.getElementById(`history-${prefix}-player-filter`);
+
+        const handleChange = () => updateDetailedHistoryTable(prefix);
+
+        if (yearSelect) {
+            yearSelect.addEventListener('change', handleChange);
+        }
+        if (monthSelect) {
+            monthSelect.addEventListener('change', handleChange);
+        }
+        if (playerSelect) {
+            playerSelect.addEventListener('change', handleChange);
+        }
+    });
 }
 
 function renderDataAnalysisTab() {
