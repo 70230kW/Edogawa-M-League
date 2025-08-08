@@ -5,14 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edogawa M League - Cyber Edition</title>
     
+    <!-- Favicons -->
     <link rel="shortcut icon" href="https://whispering-longan-7ae.notion.site/image/attachment%3A69bbd160-bff9-46b2-a4db-6b6bcd17ddca%3Afavicon.ico?table=block&id=22e963f3-cf5b-800b-a682-e58a25d127fd&spaceId=6a5b5b21-cf98-4ba8-9055-06ff5ea77222&userId=&cache=v2" type="image/x-icon">
     <link rel="apple-touch-icon" href="https://whispering-longan-7ae.notion.site/image/attachment%3A05b1d84a-b328-41cd-9f7d-30a9f1fec554%3Afavicon.png?table=block&id=22e963f3-cf5b-804c-9a1f-fe97b4274113&spaceId=6a5b5b21-cf98-4ba8-9055-06ff5ea77222&width=360&userId=&cache=v2" sizes="180x180">
-
+    
+    <!-- CDNs -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
+    <!-- Custom CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="text-gray-200">
@@ -25,54 +28,45 @@
             <p id="auth-status" class="text-center text-xs text-gray-500 mt-2">Initializing System...</p>
         </header>
 
+        <!-- タブナビゲーション -->
         <div class="mb-6">
             <div class="border-b border-gray-700">
-                <nav class="-mb-px flex space-x-4 sm:space-x-6 overflow-x-auto no-scrollbar" aria-label="Tabs">
-                    <button onclick="changeTab('game')" class="tab-btn active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">対局</button>
-                    <button onclick="changeTab('leaderboard')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">順位表</button>
-                    <button onclick="changeTab('trophy')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">トロフィー</button>
-                    <button onclick="changeTab('data-analysis')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">データ分析</button>
-                    <button onclick="changeTab('personal-stats')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">個人成績</button>
-                    <button onclick="changeTab('history')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">対局履歴</button>
-                    <button onclick="changeTab('head-to-head')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">直接対決</button>
-                    <button onclick="changeTab('history-raw')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">詳細履歴(素点)</button>
-                    <button onclick="changeTab('history-pt')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">詳細履歴(PT)</button>
-                    <button onclick="changeTab('users')" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">雀士管理</button>
+                <nav id="tab-navigation" class="-mb-px flex space-x-4 sm:space-x-6 overflow-x-auto no-scrollbar" aria-label="Tabs">
+                    <button data-tab="game" class="tab-btn active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">対局</button>
+                    <button data-tab="leaderboard" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">順位表</button>
+                    <button data-tab="trophy" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">トロフィー</button>
+                    <button data-tab="data-analysis" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">データ分析</button>
+                    <button data-tab="personal-stats" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">個人成績</button>
+                    <button data-tab="history" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">対局履歴</button>
+                    <button data-tab="head-to-head" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">直接対決</button>
+                    <button data-tab="history-raw" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">詳細履歴(素点)</button>
+                    <button data-tab="history-pt" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">詳細履歴(PT)</button>
+                    <button data-tab="users" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-400 hover:text-blue-400">雀士管理</button>
                 </nav>
             </div>
         </div>
 
+        <!-- コンテンツエリア -->
         <main id="main-content">
-            <div id="game-tab" class="space-y-6"></div>
-            <div id="leaderboard-tab" class="hidden cyber-card p-2 sm:p-6"></div>
-            <div id="trophy-tab" class="hidden cyber-card p-2 sm:p-6"></div>
-            <div id="data-analysis-tab" class="hidden"></div>
-            <div id="personal-stats-tab" class="hidden cyber-card p-2 sm:p-6"></div>
-            <div id="history-tab" class="hidden cyber-card p-2 sm:p-6"></div>
-            <div id="head-to-head-tab" class="hidden cyber-card p-2 sm:p-6"></div>
-            <div id="history-raw-tab" class="hidden cyber-card p-2 sm:p-6"></div>
-            <div id="history-pt-tab" class="hidden cyber-card p-2 sm:p-6"></div>
-            <div id="users-tab" class="hidden cyber-card p-2 sm:p-6"></div>
+            <div id="game-tab" class="tab-content space-y-6"></div>
+            <div id="leaderboard-tab" class="tab-content hidden cyber-card p-2 sm:p-6"></div>
+            <div id="trophy-tab" class="tab-content hidden cyber-card p-2 sm:p-6"></div>
+            <div id="data-analysis-tab" class="tab-content hidden"></div>
+            <div id="personal-stats-tab" class="tab-content hidden cyber-card p-2 sm:p-6"></div>
+            <div id="history-tab" class="tab-content hidden cyber-card p-2 sm:p-6"></div>
+            <div id="head-to-head-tab" class="tab-content hidden cyber-card p-2 sm:p-6"></div>
+            <div id="history-raw-tab" class="tab-content hidden cyber-card p-2 sm:p-6"></div>
+            <div id="history-pt-tab" class="tab-content hidden cyber-card p-2 sm:p-6"></div>
+            <div id="users-tab" class="tab-content hidden cyber-card p-2 sm:p-6"></div>
         </main>
     </div>
 
+    <!-- モーダル (汎用) -->
     <div id="modal" class="fixed inset-0 z-50 flex items-center justify-center hidden modal-backdrop">
         <div id="modal-content" class="cyber-card p-4 sm:p-6 rounded-lg w-11/12 max-w-4xl max-h-[90vh] overflow-y-auto"></div>
     </div>
-    <div id="cropper-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden modal-backdrop">
-        <div class="cyber-card p-4 sm:p-6 rounded-lg w-11/12 max-w-lg">
-             <h3 class="cyber-header text-xl font-bold text-yellow-300 mb-4">写真のトリミング</h3>
-             <div class="max-w-full max-h-[60vh] mb-4 bg-gray-900">
-                 <img id="cropper-image-container" src="" alt="トリミング対象の画像">
-             </div>
-             <div class="flex justify-end gap-4 mt-6">
-                 <button id="cropper-cancel-btn" class="cyber-btn px-4 py-2">キャンセル</button>
-                 <button id="crop-and-upload-btn" class="cyber-btn-green px-4 py-2">トリミングして保存</button>
-             </div>
-        </div>
-    </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
-    <script type="module" src="app.js"></script>
 
+    <!-- Firebase SDK & Custom Script -->
+    <script type="module" src="script.js"></script>
 </body>
 </html>
