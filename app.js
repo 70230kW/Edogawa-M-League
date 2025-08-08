@@ -17,12 +17,17 @@ let editingGameId = null; // ID of the game being edited
 let cachedStats = {};
 let playerTrophies = {}; // { playerId: { trophyId: true, ... } }
 
-// Chart instances
+// --- Chart instances ---
 let playerRadarChart = null;
 let pointHistoryChart = null;
 let playerBarChart = null;
 let personalRankChart = null;
 let personalPointHistoryChart = null;
+
+// --- Photo Upload State ---
+let cropper = null;
+let currentUploadUserId = null;
+
 
 // --- Constants ---
 const YAKUMAN_LIST = [
@@ -62,125 +67,6 @@ const firebaseConfig = {
     measurementId: "G-XMYXPG06QF"
 };
 
-// --- Helper/Calculation Functions ---
-function getGameYears() {
-    const years = new Set();
-    games.forEach(game => {
-        const dateStr = game.gameDate;
-        if (dateStr) {
-            const year = dateStr.substring(0, 4);
-            if (!isNaN(year)) {
-                years.add(year);
-            }
-        } else if (game.createdAt && game.createdAt.seconds) {
-            const year = new Date(game.createdAt.seconds * 1000).getFullYear().toString();
-            years.add(year);
-        }
-    });
-    return Array.from(years).sort((a, b) => b - a);
-}
-
-/**
- * Calculates all statistics for all players based on a given set of games.
- */
-function calculateAllPlayerStats(gamesToCalculate) {
-    const stats = {};
-    users.forEach(u => {
-        stats[u.id] = { id: u.id, name: u.name, photoURL: u.photoURL, totalPoints: 0, gameCount: 0, ranks: [0, 0, 0, 0], bustedCount: 0, totalRawScore: 0, totalHanchans: 0, yakumanCount: 0, maxStreak: { rentai: 0, noTobi: 0, noLast: 0, top: 0, sameRank: 0 }, currentStreak: { rentai: 0, noTobi: 0, noLast: 0, top: 0, sameRank: 0 }, lastRank: null };
-    });
-
-    const sortedGames = [...gamesToCalculate].sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
-
-    sortedGames.forEach(game => {
-        game.playerIds.forEach(pId => { if (stats[pId]) stats[pId].gameCount++; });
-        Object.entries(game.totalPoints).forEach(([playerId, point]) => { if (stats[playerId]) stats[playerId].totalPoints += point; });
-
-        game.scores.forEach(hanchan => {
-            Object.entries(hanchan.rawScores).forEach(([playerId, rawScore]) => {
-                if (stats[playerId]) {
-                    stats[playerId].totalRawScore += rawScore;
-                    if (rawScore < 0) {
-                        stats[playerId].bustedCount++;
-                        stats[playerId].currentStreak.noTobi = 0;
-                    } else {
-                        stats[playerId].currentStreak.noTobi++;
-                    }
-                    stats[playerId].maxStreak.noTobi = Math.max(stats[playerId].maxStreak.noTobi, stats[playerId].currentStreak.noTobi);
-                }
-            });
-            
-            const scoreGroups = {};
-            Object.entries(hanchan.rawScores).forEach(([pId, score]) => {
-                if (!scoreGroups[score]) scoreGroups[score] = [];
-                scoreGroups[score].push(pId);
-            });
-            const sortedScores = Object.keys(scoreGroups).map(Number).sort((a, b) => b - a);
-            
-            let rankCursor = 0;
-            sortedScores.forEach(score => {
-                const playersInGroup = scoreGroups[score];
-                playersInGroup.forEach(pId => {
-                    if (stats[pId]) {
-                        const currentRank = rankCursor;
-                        stats[pId].ranks[currentRank]++;
-
-                        if (currentRank <= 1) { stats[pId].currentStreak.rentai++; } else { stats[pId].currentStreak.rentai = 0; }
-                        if (currentRank === 0) { stats[pId].currentStreak.top++; } else { stats[pId].currentStreak.top = 0; }
-                        if (currentRank === 3) { stats[pId].currentStreak.noLast = 0; } else { stats[pId].currentStreak.noLast++; }
-                        if(stats[pId].lastRank === currentRank) { stats[pId].currentStreak.sameRank++; } else { stats[pId].currentStreak.sameRank = 1; }
-
-                        stats[pId].maxStreak.rentai = Math.max(stats[pId].maxStreak.rentai, stats[pId].currentStreak.rentai);
-                        stats[pId].maxStreak.top = Math.max(stats[pId].maxStreak.top, stats[pId].currentStreak.top);
-                        stats[pId].maxStreak.noLast = Math.max(stats[pId].maxStreak.noLast, stats[pId].currentStreak.noLast);
-                        stats[pId].maxStreak.sameRank = Math.max(stats[pId].maxStreak.sameRank, stats[pId].currentStreak.sameRank);
-                        stats[pId].lastRank = currentRank;
-                    }
-                });
-                rankCursor += playersInGroup.length;
-            });
-
-            Object.keys(hanchan.rawScores).forEach(pId => { if(stats[pId]) stats[pId].totalHanchans++; });
-            if (hanchan.yakumanEvents) {
-                hanchan.yakumanEvents.forEach(event => { if (stats[event.playerId]) { stats[event.playerId].yakumanCount += event.yakumans.length; } });
-            }
-        });
-    });
-
-    Object.values(stats).forEach(u => {
-        if (u.totalHanchans > 0) {
-            u.avgRank = u.ranks.reduce((sum, count, i) => sum + count * (i + 1), 0) / u.totalHanchans;
-            u.topRate = (u.ranks[0] / u.totalHanchans) * 100;
-            u.rentaiRate = ((u.ranks[0] + u.ranks[1]) / u.totalHanchans) * 100;
-            u.lastRate = (u.ranks[3] / u.totalHanchans) * 100;
-            u.bustedRate = (u.bustedCount / u.totalHanchans) * 100;
-            u.avgRawScore = Math.round((u.totalRawScore / u.totalHanchans) / 100) * 100;
-        } else {
-            Object.assign(u, { avgRank: 0, topRate: 0, rentaiRate: 0, lastRate: 0, bustedRate: 0, avgRawScore: 0 });
-        }
-    });
-
-    return stats;
-}
-
-function getPlayerPointHistory(playerId, fullTimeline) {
-    let cumulativePoints = 0;
-    const playerGamesByDate = {};
-    [...games]
-        .filter(g => g.playerIds.includes(playerId))
-        .forEach(game => {
-            const date = game.gameDate.split('(')[0];
-            if (!playerGamesByDate[date]) { playerGamesByDate[date] = 0; }
-            playerGamesByDate[date] += game.totalPoints[playerId];
-        });
-
-    const history = [];
-    fullTimeline.forEach(date => {
-        if (playerGamesByDate[date]) { cumulativePoints += playerGamesByDate[date]; }
-        history.push(cumulativePoints);
-    });
-    return history;
-}
-
 // --- Initialization ---
 function initializeAppAndAuth() {
     const app = initializeApp(firebaseConfig);
@@ -203,7 +89,7 @@ function initializeAppAndAuth() {
         }
     });
     
-    // Initial render of all tab containers
+    // Render all tab containers first
     renderGameTab();
     renderLeaderboardTab();
     renderTrophyTab();
@@ -215,9 +101,30 @@ function initializeAppAndAuth() {
     renderHistoryTab();
 }
 
-/**
- * Master update function.
- */
+async function setupListeners() {
+    if (!currentUser) return;
+
+    const usersCollectionRef = collection(db, `users`);
+    onSnapshot(usersCollectionRef, (snapshot) => {
+        users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        users.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+        
+        selectedPlayers = selectedPlayers.map(sp => {
+            const updatedUser = users.find(u => u.id === sp.id);
+            return updatedUser ? { id: updatedUser.id, name: updatedUser.name, photoURL: updatedUser.photoURL } : sp;
+        });
+        
+        updateAllCalculationsAndViews();
+    });
+
+    const gamesCollectionRef = collection(db, `games`);
+    const gamesQuery = query(gamesCollectionRef, orderBy("createdAt", "desc"));
+    onSnapshot(gamesQuery, (snapshot) => {
+        games = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        updateAllCalculationsAndViews();
+    });
+}
+
 function updateAllCalculationsAndViews() {
     cachedStats = calculateAllPlayerStats(games);
     
@@ -253,41 +160,128 @@ function updateAllCalculationsAndViews() {
     }
 }
 
-async function setupListeners() {
-    if (!currentUser) return;
+// --- Helper/Calculation Functions ---
+function getGameYears() {
+    const years = new Set();
+    games.forEach(game => {
+        const dateStr = game.gameDate;
+        if (dateStr) {
+            const year = dateStr.substring(0, 4);
+            if (!isNaN(year)) years.add(year);
+        } else if (game.createdAt?.seconds) {
+            const year = new Date(game.createdAt.seconds * 1000).getFullYear().toString();
+            years.add(year);
+        }
+    });
+    return Array.from(years).sort((a, b) => b - a);
+}
 
-    const usersCollectionRef = collection(db, `users`);
-    onSnapshot(usersCollectionRef, (snapshot) => {
-        users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        users.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-        
-        selectedPlayers = selectedPlayers.map(sp => {
-            const updatedUser = users.find(u => u.id === sp.id);
-            return updatedUser ? { id: updatedUser.id, name: updatedUser.name, photoURL: updatedUser.photoURL } : sp;
+function calculateAllPlayerStats(gamesToCalculate) {
+    const stats = {};
+    users.forEach(u => {
+        stats[u.id] = { id: u.id, name: u.name, photoURL: u.photoURL, totalPoints: 0, gameCount: 0, ranks: [0, 0, 0, 0], bustedCount: 0, totalRawScore: 0, totalHanchans: 0, yakumanCount: 0, maxStreak: { rentai: 0, noTobi: 0, noLast: 0, top: 0, sameRank: 0 }, currentStreak: { rentai: 0, noTobi: 0, noLast: 0, top: 0, sameRank: 0 }, lastRank: null };
+    });
+
+    const sortedGames = [...gamesToCalculate].sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+
+    sortedGames.forEach(game => {
+        if (!game.playerIds || !game.totalPoints || !game.scores) return;
+        game.playerIds.forEach(pId => { if (stats[pId]) stats[pId].gameCount++; });
+        Object.entries(game.totalPoints).forEach(([playerId, point]) => { if (stats[playerId]) stats[playerId].totalPoints += point; });
+
+        game.scores.forEach(hanchan => {
+            Object.entries(hanchan.rawScores).forEach(([playerId, rawScore]) => {
+                if (stats[playerId]) {
+                    stats[playerId].totalRawScore += rawScore;
+                    if (rawScore < 0) {
+                        stats[playerId].bustedCount++;
+                        stats[playerId].currentStreak.noTobi = 0;
+                    } else {
+                        stats[playerId].currentStreak.noTobi++;
+                    }
+                    stats[playerId].maxStreak.noTobi = Math.max(stats[playerId].maxStreak.noTobi, stats[playerId].currentStreak.noTobi);
+                }
+            });
+            
+            const scoreGroups = {};
+            Object.entries(hanchan.rawScores).forEach(([pId, score]) => {
+                if (!scoreGroups[score]) scoreGroups[score] = [];
+                scoreGroups[score].push(pId);
+            });
+            const sortedScores = Object.keys(scoreGroups).map(Number).sort((a, b) => b - a);
+            
+            let rankCursor = 0;
+            sortedScores.forEach(score => {
+                const playersInGroup = scoreGroups[score];
+                playersInGroup.forEach(pId => {
+                    if (stats[pId]) {
+                        const currentRank = rankCursor;
+                        stats[pId].ranks[currentRank]++;
+
+                        if (currentRank <= 1) stats[pId].currentStreak.rentai++; else stats[pId].currentStreak.rentai = 0;
+                        if (currentRank === 0) stats[pId].currentStreak.top++; else stats[pId].currentStreak.top = 0;
+                        if (currentRank === 3) stats[pId].currentStreak.noLast = 0; else stats[pId].currentStreak.noLast++;
+                        if(stats[pId].lastRank === currentRank) stats[pId].currentStreak.sameRank++; else stats[pId].currentStreak.sameRank = 1;
+
+                        stats[pId].maxStreak.rentai = Math.max(stats[pId].maxStreak.rentai, stats[pId].currentStreak.rentai);
+                        stats[pId].maxStreak.top = Math.max(stats[pId].maxStreak.top, stats[pId].currentStreak.top);
+                        stats[pId].maxStreak.noLast = Math.max(stats[pId].maxStreak.noLast, stats[pId].currentStreak.noLast);
+                        stats[pId].maxStreak.sameRank = Math.max(stats[pId].maxStreak.sameRank, stats[pId].currentStreak.sameRank);
+                        stats[pId].lastRank = currentRank;
+                    }
+                });
+                rankCursor += playersInGroup.length;
+            });
+
+            Object.keys(hanchan.rawScores).forEach(pId => { if(stats[pId]) stats[pId].totalHanchans++; });
+            if (hanchan.yakumanEvents) {
+                hanchan.yakumanEvents.forEach(event => { if (stats[event.playerId]) stats[event.playerId].yakumanCount += event.yakumans.length; });
+            }
         });
-        
-        updateAllCalculationsAndViews();
     });
 
-    const gamesCollectionRef = collection(db, `games`);
-    const gamesQuery = query(gamesCollectionRef, orderBy("createdAt", "desc"));
-    onSnapshot(gamesQuery, (snapshot) => {
-        games = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        updateAllCalculationsAndViews();
+    Object.values(stats).forEach(u => {
+        if (u.totalHanchans > 0) {
+            u.avgRank = u.ranks.reduce((sum, count, i) => sum + count * (i + 1), 0) / u.totalHanchans;
+            u.topRate = (u.ranks[0] / u.totalHanchans) * 100;
+            u.rentaiRate = ((u.ranks[0] + u.ranks[1]) / u.totalHanchans) * 100;
+            u.lastRate = (u.ranks[3] / u.totalHanchans) * 100;
+            u.bustedRate = (u.bustedCount / u.totalHanchans) * 100;
+            u.avgRawScore = Math.round((u.totalRawScore / u.totalHanchans) / 100) * 100;
+        } else {
+            Object.assign(u, { avgRank: 0, topRate: 0, rentaiRate: 0, lastRate: 0, bustedRate: 0, avgRawScore: 0 });
+        }
     });
+    return stats;
+}
+
+function getPlayerPointHistory(playerId, fullTimeline) {
+    let cumulativePoints = 0;
+    const playerGamesByDate = {};
+    [...games]
+        .filter(g => g.playerIds.includes(playerId))
+        .forEach(game => {
+            const date = game.gameDate.split('(')[0];
+            if (!playerGamesByDate[date]) playerGamesByDate[date] = 0;
+            playerGamesByDate[date] += game.totalPoints[playerId];
+        });
+
+    const history = [];
+    fullTimeline.forEach(date => {
+        if (playerGamesByDate[date]) cumulativePoints += playerGamesByDate[date];
+        history.push(cumulativePoints);
+    });
+    return history;
 }
 
 // --- UI Rendering ---
-
 function getPlayerPhotoHtml(playerId, sizeClass = 'w-12 h-12') {
     const user = users.find(u => u.id === playerId);
     const fontSize = parseInt(sizeClass.match(/w-(\d+)/)[1]) / 2.5;
     if (user && user.photoURL) {
         return `<img src="${user.photoURL}" class="${sizeClass} rounded-full object-cover bg-gray-800" alt="${user.name}" onerror="this.onerror=null;this.src='https://placehold.co/100x100/010409/8b949e?text=?';">`;
     }
-    return `<div class="${sizeClass} rounded-full bg-gray-700 flex items-center justify-center">
-                <i class="fas fa-user text-gray-500" style="font-size: ${fontSize}px;"></i>
-            </div>`;
+    return `<div class="${sizeClass} rounded-full bg-gray-700 flex items-center justify-center"><i class="fas fa-user text-gray-500" style="font-size: ${fontSize}px;"></i></div>`;
 }
 
 window.changeTab = (tabName) => {
@@ -298,19 +292,15 @@ window.changeTab = (tabName) => {
     document.getElementById(`${tabName}-tab`)?.classList.remove('hidden');
     document.querySelector(`.tab-btn[onclick="changeTab('${tabName}')"]`)?.classList.add('active');
 
-    if (tabName === 'data-analysis') {
-        updateDataAnalysisCharts();
-    } else if (tabName === 'game' && editingGameId === null) {
-        loadSavedGameData();
-    } else if (tabName === 'head-to-head') {
-        displayHeadToHeadStats();
-    } else if (tabName === 'trophy') {
-        updateTrophyPage();
-    }
+    if (tabName === 'data-analysis') updateDataAnalysisCharts();
+    else if (tabName === 'game' && editingGameId === null) loadSavedGameData();
+    else if (tabName === 'head-to-head') displayHeadToHeadStats();
+    else if (tabName === 'trophy') updateTrophyPage();
 };
 
 function renderGameTab() {
     const container = document.getElementById('game-tab');
+    if (!container) return;
     container.innerHTML = `
         <div id="step1-player-selection" class="cyber-card p-4 sm:p-6">
             <h2 class="cyber-header text-xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">STEP 1: 雀士選択</h2>
@@ -413,6 +403,7 @@ function renderLeaderboardTab() {
 
 function renderUserManagementTab() {
     const container = document.getElementById('users-tab');
+    if (!container) return;
     container.innerHTML = `
         <h2 class="cyber-header text-2xl font-bold mb-4 border-b border-gray-700 pb-2 text-blue-400">雀士管理</h2>
         <div class="flex flex-col sm:flex-row gap-4 mb-4">
@@ -423,76 +414,18 @@ function renderUserManagementTab() {
     `;
 }
 
-// ... all other render functions are the same ...
+// ... all other render functions ... (omitted for brevity, but they are the same as before)
 
-function renderPlayerSelection() {
-    const container = document.getElementById('player-list-for-selection');
-    if (!container) return;
-    container.innerHTML = users.map(user => {
-        const isSelected = selectedPlayers.some(p => p.id === user.id);
-        const isDisabled = !isSelected && selectedPlayers.length >= 4;
-        const photoHtml = getPlayerPhotoHtml(user.id, 'w-16 h-16');
-        return `<div>
-            <input type="checkbox" id="player-${user.id}" class="player-checkbox hidden" value="${user.id}" name="${user.name}" onchange="togglePlayerSelection(this)" ${isSelected ? 'checked' : ''} ${isDisabled ? 'disabled' : ''}>
-            <label for="player-${user.id}" class="block text-center border-2 border-gray-600 rounded-lg p-3 cursor-pointer transition-colors duration-200 hover:border-blue-500">
-                <div class="w-16 h-16 mx-auto mb-2">${photoHtml}</div>
-                <span>${user.name}</span>
-            </label>
-        </div>`;
-    }).join('');
-}
-
-function renderUserManagementList() {
-    const container = document.getElementById('user-list-management');
-    if (!container) return;
-
-    const userListHtml = users.length === 0
-        ? `<p class="text-gray-500">登録されている雀士がいません。</p>`
-        : users.map(user => {
-            const photoHtml = getPlayerPhotoHtml(user.id, 'w-12 h-12');
-            return `
-            <div class="flex items-center gap-4 bg-gray-900 p-2 rounded-lg">
-                <div class="relative flex-shrink-0">
-                    <div class="cursor-pointer" onclick="triggerPhotoUpload('${user.id}')">
-                        ${photoHtml}
-                    </div>
-                </div>
-                <div class="flex-grow">
-                    <input type="text" id="user-name-input-${user.id}" value="${user.name}" data-original-name="${user.name}" class="w-full bg-transparent rounded-md p-1 -m-1 focus:bg-gray-800 focus:ring-1 focus:ring-blue-500 outline-none" readonly>
-                </div>
-                <div class="flex items-center gap-1 flex-shrink-0">
-                    <button id="edit-user-btn-${user.id}" onclick="toggleEditUser('${user.id}')" class="cyber-btn text-sm px-3 py-1 rounded-md"><i class="fas fa-edit"></i></button>
-                    <button onclick="confirmDeleteUser('${user.id}')" class="cyber-btn-red text-sm px-3 py-1 rounded-md"><i class="fas fa-trash-alt"></i></button>
-                </div>
-            </div>`;
-        }).join('');
-    
-    container.innerHTML = `
-        <input type="file" id="photo-upload-input" class="hidden" accept="image/*" onchange="onFileSelected(event)">
-        ${userListHtml}`;
-}
-
-// ===== PHOTO UPLOAD LOGIC (FINAL VERIFIED VERSION) =====
-
-/**
- * 1. Triggers the hidden file input when a user's photo is clicked.
- * @param {string} userId - The ID of the user whose photo is being changed.
- */
+// ★ FINAL VERIFIED PHOTO UPLOAD LOGIC ★
 window.triggerPhotoUpload = (userId) => {
     currentUploadUserId = userId;
     document.getElementById('photo-upload-input').click();
 };
 
-/**
- * 2. Called immediately after a file is selected by the user.
- * Shows a loading modal and starts reading the file.
- * @param {Event} event - The file input change event.
- */
 window.onFileSelected = (event) => {
     const file = event.target.files[0];
     if (!file || !currentUploadUserId) return;
 
-    // Immediately show a loading modal to comply with browser security policies (especially on iOS).
     showModal(`
         <h3 class="cyber-header text-xl font-bold text-yellow-300 mb-4">画像を準備中...</h3>
         <div class="flex justify-center items-center h-48">
@@ -502,7 +435,6 @@ window.onFileSelected = (event) => {
 
     const reader = new FileReader();
     reader.onload = (e) => {
-        // Once the file is read, replace the loading modal content with the cropper UI.
         const modalContent = document.getElementById('modal-content');
         if (modalContent) {
             modalContent.innerHTML = `
@@ -515,7 +447,6 @@ window.onFileSelected = (event) => {
                     <button onclick="performCropAndUpload()" class="cyber-btn-green px-4 py-2">トリミングして保存</button>
                 </div>
             `;
-            // Initialize Cropper.js on the new image element.
             const image = document.getElementById('cropper-image');
             cropper = new Cropper(image, {
                 aspectRatio: 1, viewMode: 1, dragMode: 'move', background: false,
@@ -524,17 +455,11 @@ window.onFileSelected = (event) => {
         }
     };
     reader.readAsDataURL(file);
-
-    // Reset the file input's value to ensure the 'change' event fires even if the same file is selected again.
     event.target.value = '';
 };
 
-/**
- * 3. Called when the "Trim and Save" button is clicked.
- */
 window.performCropAndUpload = () => {
     if (!cropper || !currentUploadUserId) return;
-
     cropper.getCroppedCanvas({
         width: 256, height: 256, imageSmoothingQuality: 'high',
     }).toBlob(async (blob) => {
@@ -543,14 +468,9 @@ window.performCropAndUpload = () => {
         } else {
             showModalMessage("画像の変換に失敗しました。");
         }
-    }, 'image/webp', 0.85); // Use high-quality WebP format for smaller file size.
+    }, 'image/webp', 0.85);
 };
 
-/**
- * 4. Uploads the cropped image blob to Firebase Storage.
- * @param {string} userId - The ID of the user.
- * @param {Blob} blob - The cropped image data.
- */
 async function uploadCroppedImage(userId, blob) {
     showLoadingModal("写真をアップロード中...");
     try {
@@ -564,13 +484,10 @@ async function uploadCroppedImage(userId, blob) {
         console.error("Photo upload failed:", error);
         showModalMessage("写真のアップロードに失敗しました。");
     } finally {
-        cancelCrop(); // Clean up resources.
+        cancelCrop();
     }
 }
 
-/**
- * 5. Cleans up cropper instance and closes the modal.
- */
 window.cancelCrop = () => {
     if (cropper) {
         cropper.destroy();
@@ -579,9 +496,6 @@ window.cancelCrop = () => {
     currentUploadUserId = null;
     closeModal();
 };
-
-// ... (rest of the app.js code, including all other functions)
-// Ensure to include all functions like addUser, toggleEditUser, calculateAndSave, etc.
 
 // --- Initial Execution ---
 initializeAppAndAuth();
