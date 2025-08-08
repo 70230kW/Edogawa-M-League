@@ -1,3 +1,4 @@
+/* --- Custom Properties (Variables) --- */
 :root {
     --bg-dark: #0d1117;
     --primary: #161b22;
@@ -17,7 +18,12 @@
     --rank-crystal: #A7D8DE;
     --rank-chaos: #9932CC;
 }
-html { scroll-behavior: smooth; }
+
+/* --- Base Styles --- */
+html {
+    scroll-behavior: smooth;
+}
+
 body {
     font-family: '"MS PGothic", "ＭＳ Ｐゴシック", sans-serif';
     background-color: var(--bg-dark);
@@ -25,12 +31,15 @@ body {
     user-select: none;
     -webkit-user-select: none;
 }
+
+/* --- Component Styles: Cards, Buttons, Inputs --- */
 .cyber-card {
     background-color: var(--primary);
     border: 1px solid var(--border-color);
     box-shadow: 0 0 15px rgba(0,0,0,0.2), 0 0 5px var(--accent-glow);
     transition: all 0.3s ease;
 }
+
 .cyber-btn {
     background-color: transparent;
     border: 1px solid var(--accent-blue);
@@ -38,45 +47,48 @@ body {
     text-shadow: 0 0 5px var(--accent-glow);
     transition: all 0.3s ease;
 }
+
 .cyber-btn:hover, .cyber-btn.active {
     background-color: var(--accent-blue);
     color: var(--primary);
     box-shadow: 0 0 10px var(--accent-glow);
 }
+
 .cyber-btn-yellow {
     border-color: var(--accent-yellow);
     color: var(--accent-yellow);
     text-shadow: 0 0 5px var(--accent-yellow);
 }
+
 .cyber-btn-yellow:hover {
     background-color: var(--accent-yellow);
     color: var(--primary);
     box-shadow: 0 0 10px var(--accent-yellow);
 }
+
 .cyber-btn-green {
     border-color: var(--accent-green);
     color: var(--accent-green);
 }
+
 .cyber-btn-green:hover {
     background-color: var(--accent-green);
     color: var(--primary);
     box-shadow: 0 0 10px rgba(82, 197, 105, 0.5);
 }
+
 .cyber-btn-red {
     border-color: var(--accent-red);
     color: var(--accent-red);
     text-shadow: 0 0 5px var(--accent-red);
 }
+
 .cyber-btn-red:hover {
     background-color: var(--accent-red);
     color: var(--primary);
     box-shadow: 0 0 10px var(--accent-red);
 }
-.tab-btn.active {
-    color: var(--accent-blue);
-    border-bottom-color: var(--accent-blue);
-    text-shadow: 0 0 5px var(--accent-glow);
-}
+
 input[type="text"], input[type="number"], select {
     background-color: var(--secondary);
     border: 1px solid var(--border-color);
@@ -84,56 +96,106 @@ input[type="text"], input[type="number"], select {
     padding-top: 0.6rem;
     padding-bottom: 0.6rem;
 }
+
 input:focus, select:focus {
     outline: none;
     border-color: var(--accent-blue);
     box-shadow: 0 0 5px var(--accent-glow);
 }
+
 input:disabled, select:disabled {
     background-color: #21262d;
     cursor: not-allowed;
 }
+
+/* --- Tab Styles --- */
+.tab-btn.active {
+    color: var(--accent-blue);
+    border-bottom-color: var(--accent-blue);
+    text-shadow: 0 0 5px var(--accent-glow);
+}
+
+/* --- Player Selection Checkbox --- */
 .player-checkbox:checked + label {
     background-color: var(--accent-blue);
     color: var(--primary);
     border-color: var(--accent-blue);
     box-shadow: 0 0 10px var(--accent-glow);
 }
+
 .player-checkbox:disabled + label {
     background-color: #30363d;
     color: #8b949e;
     cursor: not-allowed;
     border-color: #444;
 }
-.modal-backdrop { background-color: rgba(0, 0, 0, 0.8); }
-.cyber-header { font-family: 'Orbitron', sans-serif; }
-.glowing-text { text-shadow: 0 0 8px var(--accent-glow); }
+
+/* --- Modal Styles --- */
+.modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.8);
+}
+
+/* --- Utility & Typography Styles --- */
+.cyber-header {
+    font-family: 'Orbitron', sans-serif;
+}
+
+.glowing-text {
+    text-shadow: 0 0 8px var(--accent-glow);
+}
+
 .text-rank-1 { color: var(--accent-green); font-weight: bold; }
 .text-rank-4 { color: var(--accent-red); font-weight: bold; }
-.font-m-gothic { font-family: '"MS PGothic", "ＭＳ Ｐゴシック", sans-serif'; }
 
-.sticky-col-1 { position: sticky; left: 0; z-index: 1; }
-.sticky-col-2 { position: sticky; left: 56px; z-index: 1; }
+.font-m-gothic {
+    font-family: '"MS PGothic", "ＭＳ Ｐゴシック", sans-serif';
+}
 
-.leaderboard-table th, .leaderboard-table td { background-color: var(--primary); }
-.leaderboard-table thead th { position: sticky; top: 0; z-index: 2; }
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
 
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+/* --- Leaderboard Table Sticky Styles --- */
+.leaderboard-table th, .leaderboard-table td {
+    background-color: var(--primary);
+}
+.leaderboard-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+.sticky-col-1 {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+}
+.sticky-col-2 {
+    position: sticky;
+    left: 56px; /* Adjust based on the width of the first column */
+    z-index: 1;
+}
 
-/* Trophy Styles */
+
+/* --- Trophy Styles --- */
 .trophy-card {
     background: linear-gradient(145deg, #1a202c, #13171f);
     border: 1px solid var(--border-color);
     transition: all 0.3s ease;
     opacity: 0.4;
 }
+
 .trophy-card.achieved {
     opacity: 1;
 }
+
 .trophy-icon {
     text-shadow: 0 0 10px;
 }
+
 .rank-bronze .trophy-icon { color: var(--rank-bronze); }
 .rank-silver .trophy-icon { color: var(--rank-silver); }
 .rank-gold .trophy-icon { color: var(--rank-gold); }
@@ -141,51 +203,20 @@ input:disabled, select:disabled {
 .rank-crystal .trophy-icon { color: var(--rank-crystal); }
 .rank-chaos .trophy-icon { color: var(--rank-chaos); }
 
-.rank-bronze.achieved {
-    border-left: 5px solid var(--rank-bronze);
-    box-shadow: 0 0 15px var(--rank-bronze);
-}
-.rank-silver.achieved {
-    border-left: 5px solid var(--rank-silver);
-    box-shadow: 0 0 15px var(--rank-silver);
-}
-.rank-gold.achieved {
-    border-left: 5px solid var(--rank-gold);
-    box-shadow: 0 0 15px var(--rank-gold);
-}
-.rank-platinum.achieved {
-    border-left: 5px solid var(--rank-platinum);
-    box-shadow: 0 0 15px var(--rank-platinum);
-}
-.rank-crystal.achieved {
-    border-left: 5px solid var(--rank-crystal);
-    box-shadow: 0 0 15px var(--rank-crystal);
-}
-.rank-chaos.achieved {
-    border-left: 5px solid var(--rank-chaos);
-    box-shadow: 0 0 15px var(--rank-chaos);
-}
-.trophy-card.secret:not(.achieved) .trophy-icon {
-    color: var(--text-secondary);
-}
-.trophy-card.secret:not(.achieved) h4 {
-    color: var(--text-secondary);
-}
+.rank-bronze.achieved { border-left: 5px solid var(--rank-bronze); box-shadow: 0 0 15px var(--rank-bronze); }
+.rank-silver.achieved { border-left: 5px solid var(--rank-silver); box-shadow: 0 0 15px var(--rank-silver); }
+.rank-gold.achieved { border-left: 5px solid var(--rank-gold); box-shadow: 0 0 15px var(--rank-gold); }
+.rank-platinum.achieved { border-left: 5px solid var(--rank-platinum); box-shadow: 0 0 15px var(--rank-platinum); }
+.rank-crystal.achieved { border-left: 5px solid var(--rank-crystal); box-shadow: 0 0 15px var(--rank-crystal); }
+.rank-chaos.achieved { border-left: 5px solid var(--rank-chaos); box-shadow: 0 0 15px var(--rank-chaos); }
+
+.trophy-card.secret:not(.achieved) .trophy-icon,
+.trophy-card.secret:not(.achieved) h4,
 .trophy-card.secret:not(.achieved) p {
     color: var(--text-secondary);
 }
+
 .yakuman-label-disabled {
     opacity: 0.5;
     cursor: not-allowed;
-}
-/* style.css の末尾に追加 */
-
-/* Cropper.js用のスタイル */
-.cropper-container img {
-    max-width: 100%;
-}
-
-.cropper-view-box,
-.cropper-face {
-  border-radius: 50%;
 }
