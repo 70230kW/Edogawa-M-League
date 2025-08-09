@@ -510,7 +510,14 @@
             
             const activeTab = document.querySelector('.tab-btn.active').getAttribute('onclick').match(/'([^']+)'/)[1];
             
-            if (activeTab === 'data-analysis') {
+            if (activeTab === 'game') {
+                if (document.getElementById('step2-rule-settings')?.classList.contains('hidden')) {
+                    renderPlayerSelection();
+                }
+                if(!document.getElementById('step3-score-input').classList.contains('hidden')) {
+                    renderScoreDisplay();
+                }
+            } else if (activeTab === 'data-analysis') {
                 updateDataAnalysisCharts();
             } else if (activeTab === 'personal-stats') {
                 const playerId = document.getElementById('personal-stats-player-select')?.value;
@@ -2726,6 +2733,41 @@
             
             changeTab('game');
         };
+
+        // =================================================================
+        // == BUG FIX: Added missing updateHeadToHeadDropdowns function  ==
+        // =================================================================
+        function updateHeadToHeadDropdowns() {
+            const p1Select = document.getElementById('h2h-player1');
+            const p2Select = document.getElementById('h2h-player2');
+            if (!p1Select || !p2Select) return;
+
+            const currentP1 = p1Select.value;
+            const currentP2 = p2Select.value;
+
+            const options = users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+
+            p1Select.innerHTML = options;
+            p2Select.innerHTML = options;
+
+            // Restore previous selection or set a default
+            if (users.some(u => u.id === currentP1)) {
+                p1Select.value = currentP1;
+            } else if (users.length > 0) {
+                p1Select.value = users[0].id;
+            }
+
+            if (users.some(u => u.id === currentP2) && currentP2 !== p1Select.value) {
+                p2Select.value = currentP2;
+            } else if (users.length > 1) {
+                // Find a different player for the second dropdown
+                const p1Value = p1Select.value;
+                const defaultP2 = users.find(u => u.id !== p1Value);
+                if (defaultP2) {
+                    p2Select.value = defaultP2.id;
+                }
+            }
+        }
 
         window.displayHeadToHeadStats = () => {
             updateHeadToHeadDropdowns();
